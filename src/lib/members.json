@@ -1,0 +1,376 @@
+[
+  {
+    "id": "M01",
+    "name": "김철수",
+    "party": "국민의힘",
+    "region": "서울 강남구 갑",
+    "trustScore": 82,
+    "indicators": [
+      { "label": "출석률", "value": 96 },
+      { "label": "내로남불 방어율", "value": 74 },
+      { "label": "법안통과율", "value": 42 },
+      { "label": "발언일치율", "value": 88 },
+      { "label": "공약이행률", "value": 71 },
+      { "label": "입법영향력", "value": 65 },
+      { "label": "활동성", "value": 78 },
+      { "label": "질의 답변율", "value": 100 }
+    ],
+    "electedHistory": [
+      "21대 국회의원 (서울 강남구 갑)",
+      "22대 국회의원 (서울 강남구 갑)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT001", "title": "소상공인 보호 및 지원에 관한 법률 개정안", "role": "representative" },
+      { "billId": "BT002", "title": "청년 주거 안정 특별법 제정안", "role": "cosponsor" }
+    ],
+    "statements": [
+      {
+        "text": "보수 정당의 가치를 지키기 위해 이번 예산안은 강남구의 인프라 확충에 집중되어야 합니다.",
+        "category": "budget",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "",
+    "hanjaName": "金哲秀",
+    "englishName": "Kim Chul-soo",
+    "committee": "기획재정위원회"
+  },
+  {
+    "id": "M02",
+    "name": "이재명",
+    "party": "더불어민주당",
+    "region": "인천 계양구 을",
+    "trustScore": 75,
+    "indicators": [
+      { "label": "출석률", "value": 88 },
+      { "label": "내로남불 방어율", "value": 68 },
+      { "label": "법안통과율", "value": 55 },
+      { "label": "발언일치율", "value": 82 },
+      { "label": "공약이행률", "value": 80 },
+      { "label": "입법영향력", "value": 95 },
+      { "label": "활동성", "value": 90 },
+      { "label": "질의 답변율", "value": 85 }
+    ],
+    "electedHistory": [
+      "21대 국회의원 (인천 계양구 을)",
+      "22대 국회의원 (인천 계양구 을)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT003", "title": "민생회복지원금 지급을 위한 특별조치법안", "role": "representative" },
+      { "billId": "BT004", "title": "지역사랑상품권 이용 활성화에 관한 법률 개정안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "기본사회 구축과 민생 회복을 위해 지역화폐 활성화와 보편적 경제 혜택이 핵심 과제입니다.",
+        "category": "economy",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700547",
+    "hanjaName": "李在明",
+    "englishName": "Lee Jae-myung",
+    "committee": "외교통일위원회"
+  },
+  {
+    "id": "M03",
+    "name": "추경호",
+    "party": "국민의힘",
+    "region": "대구 달성군",
+    "trustScore": 78,
+    "indicators": [
+      { "label": "출석률", "value": 94 },
+      { "label": "내로남불 방어율", "value": 78 },
+      { "label": "법안통과율", "value": 60 },
+      { "label": "발언일치율", "value": 89 },
+      { "label": "공약이행률", "value": 85 },
+      { "label": "입법영향력", "value": 80 },
+      { "label": "활동성", "value": 85 },
+      { "label": "질의 답변율", "value": 90 }
+    ],
+    "electedHistory": [
+      "20대 국회의원 (대구 달성군)",
+      "21대 국회의원 (대구 달성군)",
+      "22대 국회의원 (대구 달성군)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT005", "title": "상속세 및 증여세법 일부개정법률안", "role": "representative" },
+      { "billId": "BT006", "title": "종합부동산세법 일부개정법률안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "국가 재정 건전성을 수호하고 불합리한 세제 세율 구조를 현실적으로 개편해 나가야 합니다.",
+        "category": "budget",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700508",
+    "hanjaName": "秋慶鎬",
+    "englishName": "Choo Kyung-ho",
+    "committee": "기획재정위원회"
+  },
+  {
+    "id": "M04",
+    "name": "조국",
+    "party": "조국혁신당",
+    "region": "비례대표",
+    "trustScore": 69,
+    "indicators": [
+      { "label": "출석률", "value": 85 },
+      { "label": "내로남불 방어율", "value": 62 },
+      { "label": "법안통과율", "value": 30 },
+      { "label": "발언일치율", "value": 90 },
+      { "label": "공약이행률", "value": 75 },
+      { "label": "입법영향력", "value": 82 },
+      { "label": "활동성", "value": 95 },
+      { "label": "질의 답변율", "value": 70 }
+    ],
+    "electedHistory": [
+      "22대 국회의원 (비례대표)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT007", "title": "검찰청법 폐지법률안", "role": "representative" },
+      { "billId": "BT008", "title": "공직자윤리법 일부개정법률안", "role": "cosponsor" }
+    ],
+    "statements": [
+      {
+        "text": "완전한 검찰 개혁과 수사·기소 분리를 달성하여 헌법 질서와 사법 신뢰를 복원하겠습니다.",
+        "category": "justice",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700728",
+    "hanjaName": "曺國",
+    "englishName": "Cho Guk",
+    "committee": "법제사법위원회"
+  },
+  {
+    "id": "M05",
+    "name": "이준석",
+    "party": "개혁신당",
+    "region": "경기 화성시 을",
+    "trustScore": 81,
+    "indicators": [
+      { "label": "출석률", "value": 92 },
+      { "label": "내로남불 방어율", "value": 80 },
+      { "label": "법안통과율", "value": 45 },
+      { "label": "발언일치율", "value": 85 },
+      { "label": "공약이행률", "value": 78 },
+      { "label": "입법영향력", "value": 75 },
+      { "label": "활동성", "value": 93 },
+      { "label": "질의 답변율", "value": 80 }
+    ],
+    "electedHistory": [
+      "22대 국회의원 (경기 화성시 을)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT009", "title": "지방교육재정교부금법 일부개정법률안", "role": "representative" },
+      { "billId": "BT010", "title": "과학기술기본법 일부개정법률안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "지역구 과학 인프라 확충과 실용성 위주의 정책 개혁으로 구태 양당 카르텔을 청산하겠습니다.",
+        "category": "reform",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700701",
+    "hanjaName": "李俊錫",
+    "englishName": "Lee Jun-seok",
+    "committee": "과학기술정보방송통신위원회"
+  },
+  {
+    "id": "M06",
+    "name": "안철수",
+    "party": "국민의힘",
+    "region": "경기 성남시 분당구 갑",
+    "trustScore": 76,
+    "indicators": [
+      { "label": "출석률", "value": 89 },
+      { "label": "내로남불 방어율", "value": 85 },
+      { "label": "법안통과율", "value": 52 },
+      { "label": "발언일치율", "value": 87 },
+      { "label": "공약이행률", "value": 82 },
+      { "label": "입법영향력", "value": 78 },
+      { "label": "활동성", "value": 80 },
+      { "label": "질의 답변율", "value": 80 }
+    ],
+    "electedHistory": [
+      "19대 국회의원 (서울 노원구 병)",
+      "20대 국회의원 (서울 노원구 병)",
+      "21대 국회의원 (경기 성남시 분당구 갑)",
+      "22대 국회의원 (경기 성남시 분당구 갑)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT011", "title": "국가전략기술 육성 특별법안", "role": "representative" },
+      { "billId": "BT012", "title": "인공지능산업 육성 및 신뢰 기반 조성에 관한 법률안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "과학기술이 국가 경쟁력의 근간이며, 4차 산업 강국 도약을 위한 법적 틀을 정비해야 합니다.",
+        "category": "reform",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700465",
+    "hanjaName": "安哲秀",
+    "englishName": "Ahn Cheol-soo",
+    "committee": "외교통일위원회"
+  },
+  {
+    "id": "M07",
+    "name": "나경원",
+    "party": "국민의힘",
+    "region": "서울 동작구 을",
+    "trustScore": 73,
+    "indicators": [
+      { "label": "출석률", "value": 91 },
+      { "label": "내로남불 방어율", "value": 70 },
+      { "label": "법안통과율", "value": 58 },
+      { "label": "발언일치율", "value": 80 },
+      { "label": "공약이행률", "value": 82 },
+      { "label": "입법영향력", "value": 81 },
+      { "label": "활동성", "value": 84 },
+      { "label": "질의 답변율", "value": 75 }
+    ],
+    "electedHistory": [
+      "17대 국회의원 (비례대표)",
+      "18대 국회의원 (서울 중구)",
+      "19대 국회의원 (서울 동작구 을)",
+      "20대 국회의원 (서울 동작구 을)",
+      "22대 국회의원 (서울 동작구 을)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT013", "title": "저출산·고령사회기본법 일부개정법률안", "role": "representative" },
+      { "billId": "BT014", "title": "도시재생 활성화 및 지원에 관한 특별법 개정안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "지속가능한 사회를 위협하는 초저출산 문제를 극복하기 위해 과감하고 파격적인 제도를 보장해야 합니다.",
+        "category": "budget",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700583",
+    "hanjaName": "羅卿瑗",
+    "englishName": "Na Kyung-won",
+    "committee": "산업통상자원중소벤처기업위원회"
+  },
+  {
+    "id": "M08",
+    "name": "박지원",
+    "party": "더불어민주당",
+    "region": "전남 해남군완도군진도군",
+    "trustScore": 77,
+    "indicators": [
+      { "label": "출석률", "value": 90 },
+      { "label": "내로남불 방어율", "value": 75 },
+      { "label": "법안통과율", "value": 40 },
+      { "label": "발언일치율", "value": 84 },
+      { "label": "공약이행률", "value": 81 },
+      { "label": "입법영향력", "value": 88 },
+      { "label": "활동성", "value": 96 },
+      { "label": "질의 답변율", "value": 85 }
+    ],
+    "electedHistory": [
+      "14대 국회의원 (비례대표)",
+      "18대 국회의원 (전남 목포시)",
+      "19대 국회의원 (전남 목포시)",
+      "20대 국회의원 (전남 목포시)",
+      "22대 국회의원 (전남 해남군완도군진도군)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT015", "title": "남북관계 발전에 관한 법률 일부개정법률안", "role": "representative" },
+      { "billId": "BT016", "title": "국정원법 일부개정법률안", "role": "cosponsor" }
+    ],
+    "statements": [
+      {
+        "text": "국격 상승과 한반도 평화 협력은 어떤 안보 위협 속에서도 결코 양보할 수 없는 최우선 국익입니다.",
+        "category": "defense",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700612",
+    "hanjaName": "朴智元",
+    "englishName": "Park Jie-won",
+    "committee": "법제사법위원회"
+  },
+  {
+    "id": "M09",
+    "name": "우원식",
+    "party": "더불어민주당",
+    "region": "서울 노원구 갑",
+    "trustScore": 84,
+    "indicators": [
+      { "label": "출석률", "value": 97 },
+      { "label": "내로남불 방어율", "value": 82 },
+      { "label": "법안통과율", "value": 65 },
+      { "label": "발언일치율", "value": 90 },
+      { "label": "공약이행률", "value": 86 },
+      { "label": "입법영향력", "value": 92 },
+      { "label": "활동성", "value": 88 },
+      { "label": "질의 답변율", "value": 95 }
+    ],
+    "electedHistory": [
+      "17대 국회의원 (서울 노원구 을)",
+      "19대 국회의원 (서울 노원구 을)",
+      "20대 국회의원 (서울 노원구 을)",
+      "21대 국회의원 (서울 노원구 을)",
+      "22대 국회의원 (서울 노원구 갑)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT017", "title": "생명안전기본법안", "role": "representative" },
+      { "billId": "BT018", "title": "근로기준법 일부개정법률안", "role": "representative" }
+    ],
+    "statements": [
+      {
+        "text": "의회민주주의 원칙에 따라 국회를 공정하고 투명하게 운영하며 국민의 안전한 일상을 최우선으로 입법하겠습니다.",
+        "category": "justice",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700543",
+    "hanjaName": "禹元植",
+    "englishName": "Woo Won-shik",
+    "committee": "국회운영위원회"
+  },
+  {
+    "id": "M10",
+    "name": "추미애",
+    "party": "더불어민주당",
+    "region": "경기 하남시 갑",
+    "trustScore": 71,
+    "indicators": [
+      { "label": "출석률", "value": 88 },
+      { "label": "내로남불 방어율", "value": 60 },
+      { "label": "법안통과율", "value": 50 },
+      { "label": "발언일치율", "value": 84 },
+      { "label": "공약이행률", "value": 76 },
+      { "label": "입법영향력", "value": 85 },
+      { "label": "활동성", "value": 90 },
+      { "label": "질의 답변율", "value": 70 }
+    ],
+    "electedHistory": [
+      "15대 국회의원 (서울 광진구 을)",
+      "16대 국회의원 (서울 광진구 을)",
+      "18대 국회의원 (서울 광진구 을)",
+      "19대 국회의원 (서울 광진구 을)",
+      "20대 국회의원 (서울 광진구 을)",
+      "22대 국회의원 (경기 하남시 갑)"
+    ],
+    "sponsoredBills": [
+      { "billId": "BT019", "title": "정부조직법 일부개정법률안", "role": "representative" },
+      { "billId": "BT020", "title": "법원조직법 일부개정법률안", "role": "cosponsor" }
+    ],
+    "statements": [
+      {
+        "text": "개혁과 공정에 기반한 사법 평등을 실현하고 기득권 혁파를 위한 사회적 타협을 도출해 내야 합니다.",
+        "category": "justice",
+        "sourceUrl": "https://open.assembly.go.kr"
+      }
+    ],
+    "photoUrl": "https://open.assembly.go.kr/portal/openapi/thumbnail.do?dept_cd=9700684",
+    "hanjaName": "秋美愛",
+    "englishName": "Choo Mi-ae",
+    "committee": "국방위원회"
+  }
+]
