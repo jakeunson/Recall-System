@@ -10,43 +10,55 @@ interface StatCardProps {
   accent?: boolean;
 }
 
-export default function StatCard({
-  label,
-  value,
-  unit,
-  sub,
-  accent = false,
-}: StatCardProps) {
+export default function StatCard({ label, value, unit, sub, accent }: StatCardProps) {
   return (
     <div className="card-base" style={{
-      background: 'var(--bg-3)',
-      padding: '20px',
       display: 'flex',
       flexDirection: 'column',
-      gap: '8px',
-      cursor: 'default'
+      justifyContent: 'space-between',
+      padding: '20px',
+      backgroundColor: accent ? 'var(--accent)' : 'var(--bg-2)',
+      color: accent ? '#ffffff' : 'var(--text-1)',
+      border: accent ? 'none' : '1px solid var(--border)',
     }}>
-      <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div style={{
+        fontSize: 'var(--font-sm)',
+        color: accent ? 'rgba(255,255,255,0.7)' : 'var(--text-2)',
+        fontWeight: 600,
+        marginBottom: '12px',
+      }}>
         {label}
-      </span>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-        <span className="mono" style={{ 
-          fontSize: '28px', 
-          fontWeight: 700, 
-          color: accent ? 'var(--accent)' : 'var(--text-1)' 
+      </div>
+      
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '8px' }}>
+        <span style={{
+          fontSize: '28px',
+          fontWeight: 800,
+          letterSpacing: '-0.03em',
         }}>
-          {value}
+          {typeof value === 'number' ? value.toLocaleString() : value}
         </span>
         {unit && (
-          <span style={{ fontSize: '14px', color: 'var(--text-2)' }}>
+          <span style={{
+            fontSize: 'var(--font-sm)',
+            fontWeight: 600,
+            color: accent ? 'rgba(255,255,255,0.8)' : 'var(--text-3)',
+          }}>
             {unit}
           </span>
         )}
       </div>
+
       {sub && (
-        <span style={{ fontSize: '12px', color: 'var(--text-2)' }}>
+        <div style={{
+          fontSize: '12px',
+          color: accent ? 'rgba(255,255,255,0.6)' : 'var(--text-3)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
           {sub}
-        </span>
+        </div>
       )}
     </div>
   );

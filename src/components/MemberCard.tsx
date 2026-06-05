@@ -26,75 +26,83 @@ export default function MemberCard({ member, anonymousId }: MemberCardProps) {
   const handleVote = (type: 'agree' | 'disagree') => {
     setVote(type);
     setState('voted');
-    
-    // Simulate delay before revealing (2 seconds)
+
     setTimeout(() => {
       setState('revealing');
       setTimeout(() => {
         setState('revealed');
-      }, 400); // Animation duration
+      }, 400);
     }, 1500);
   };
 
   return (
     <div className="card-base" style={{
-      background: 'var(--bg-3)',
       padding: '24px',
       display: 'flex',
       flexDirection: 'column',
       gap: '20px',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
     }}>
-      {/* Top Section: Identity (Masked or Revealed) */}
+
+      {/* Top Section */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--text-3)', fontWeight: 600 }}>의원 식별 코드</span>
-          <h3 style={{ 
-            fontSize: '20px', 
-            fontWeight: 700, 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <h3 style={{
+            fontSize: '20px',
+            fontWeight: 700,
             color: state === 'revealed' ? 'var(--text-1)' : 'var(--text-2)',
-            transition: 'color 0.4s ease'
+            transition: 'color 0.4s ease',
           }}>
             {state === 'revealed' ? member.name : anonymousId}
           </h3>
           {state === 'revealed' && (
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', animation: 'fadeIn 0.4s ease' }}>
-              <span style={{ 
-                fontSize: '11px', 
-                padding: '2px 8px', 
-                backgroundColor: 'var(--border)', 
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-2)'
+            <div style={{ display: 'flex', gap: '6px', animation: 'fadeIn 0.4s ease' }}>
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '3px 10px',
+                backgroundColor: 'var(--bg-3)',
+                borderRadius: '12px',
+                color: 'var(--text-2)',
               }}>{member.party}</span>
-              <span style={{ 
-                fontSize: '11px', 
-                padding: '2px 8px', 
-                backgroundColor: 'var(--border)', 
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-2)'
+              <span style={{
+                fontSize: '12px',
+                fontWeight: 600,
+                padding: '3px 10px',
+                backgroundColor: 'var(--bg-3)',
+                borderRadius: '12px',
+                color: 'var(--text-2)',
               }}>{member.region}</span>
             </div>
           )}
         </div>
-        <GaugeRing value={member.trustScore} size={70} />
+        <GaugeRing value={member.trustScore} size={64} strokeWidth={5} />
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '0 -24px' }} />
 
-      {/* Content Section: Behavior Data */}
-      <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-        <RadarChart indicators={member.indicators} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text-2)', backgroundColor: 'var(--bg-2)', padding: '12px', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid var(--accent)' }}>
-            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-3)', marginBottom: '4px' }}>주요 발언 (마스킹 처리됨)</span>
+      {/* Content Section */}
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+        {state === 'revealed' && <RadarChart indicators={member.indicators} />}
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{
+            fontSize: 'var(--font-sm)',
+            color: 'var(--text-1)',
+            backgroundColor: 'var(--bg-3)',
+            padding: '16px',
+            borderRadius: 'var(--radius-sm)',
+            lineHeight: 1.6,
+          }}>
+            <span style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-3)', marginBottom: '8px' }}>주요 발언 요약</span>
             &ldquo;{member.statements[0].text}&rdquo;
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {member.indicators.slice(0, 4).map((ind, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                <span style={{ color: 'var(--text-3)' }}>{ind.label}</span>
-                <span className="mono" style={{ color: 'var(--text-2)' }}>{ind.value}%</span>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '1px solid var(--border-2)', paddingBottom: '6px' }}>
+                <span style={{ color: 'var(--text-2)', fontWeight: 500 }}>{ind.label}</span>
+                <span style={{ color: 'var(--text-1)', fontWeight: 700 }}>{ind.value}%</span>
               </div>
             ))}
           </div>
@@ -102,75 +110,78 @@ export default function MemberCard({ member, anonymousId }: MemberCardProps) {
       </div>
 
       {/* Interaction Section */}
-      <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
+      <div style={{ marginTop: 'auto', paddingTop: '12px' }}>
         {state === 'blind' ? (
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
+            <button
               onClick={() => handleVote('agree')}
-              style={{ 
-                flex: 1, 
-                padding: '12px', 
-                borderRadius: 'var(--radius-sm)', 
-                border: '1px solid var(--success)', 
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid rgba(22, 163, 74, 0.3)',
                 color: 'var(--success)',
-                fontSize: '14px',
-                fontWeight: 600,
-                transition: 'background 0.2s'
+                fontSize: 'var(--font-sm)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'background-color 0.15s',
+                backgroundColor: 'rgba(22, 163, 74, 0.05)',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(74, 222, 128, 0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >동의</button>
-            <button 
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(22, 163, 74, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(22, 163, 74, 0.05)'}
+            >동의합니다</button>
+            <button
               onClick={() => handleVote('disagree')}
-              style={{ 
-                flex: 1, 
-                padding: '12px', 
-                borderRadius: 'var(--radius-sm)', 
-                border: '1px solid var(--danger)', 
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid rgba(220, 38, 38, 0.3)',
                 color: 'var(--danger)',
-                fontSize: '14px',
-                fontWeight: 600,
-                transition: 'background 0.2s'
+                fontSize: 'var(--font-sm)',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'background-color 0.15s',
+                backgroundColor: 'rgba(220, 38, 38, 0.05)',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.05)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-            >비동의</button>
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.05)'}
+            >동의하지 않습니다</button>
           </div>
         ) : (
-          <div style={{ 
-            height: '46px', 
-            display: 'flex', 
-            alignItems: 'center', 
+          <div style={{
+            height: '46px',
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'var(--bg-2)',
+            backgroundColor: 'var(--bg-3)',
             borderRadius: 'var(--radius-sm)',
-            fontSize: '13px',
-            color: 'var(--text-2)',
-            border: '1px solid var(--border)'
+            fontSize: 'var(--font-sm)',
+            border: 'none',
+            gap: '8px',
           }}>
             {state === 'voted' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="spinner" style={{ width: '12px', height: '12px', border: '2px solid var(--text-3)', borderTop: '2px solid var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                데이터 출처 분석 중...
-              </div>
+              <>
+                <div style={{
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid var(--border-2)',
+                  borderTop: '2px solid var(--text-2)',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }} />
+                <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>처리 중...</span>
+              </>
             )}
             {(state === 'revealing' || state === 'revealed') && (
-              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>검증 완료: {vote === 'agree' ? '동의' : '비동의'} 평가됨</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 700 }}>
+                평가 완료 · {vote === 'agree' ? '동의' : '비동의'}
+              </span>
             )}
           </div>
         )}
       </div>
 
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   );
 }

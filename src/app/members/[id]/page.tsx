@@ -11,6 +11,7 @@ import {
 import RadarChart from '@/components/RadarChart';
 import GaugeRing from '@/components/GaugeRing';
 import { SkeletonCard, SkeletonText } from '@/components/ui/SkeletonUI';
+import AuditLogPanel from '@/components/ui/AuditLogPanel';
 
 export default function MemberDetailPage() {
   const params = useParams();
@@ -166,13 +167,17 @@ export default function MemberDetailPage() {
         </div>
 
         {/* Trust Score circular gauge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderLeft: '1px solid var(--border)', paddingLeft: '28px' }}>
-          <GaugeRing value={member.trustScore} size={100} strokeWidth={9} label="지표 신뢰" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <span className="mono" style={{ fontSize: 'var(--font-xs)', color: 'var(--text-3)' }}>ACCUMULATED_TRUST_LEVEL</span>
-            <strong style={{ fontSize: 'var(--font-lg)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{member.trustScore >= 80 ? 'HIGH QUALITY' : member.trustScore >= 60 ? 'STABLE' : 'AUDIT REQUIRED'}</strong>
-            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-2)' }}>WDI 공식 표결 이탈 가중 평가</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderLeft: '1px solid var(--border)', paddingLeft: '28px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <GaugeRing value={member.trustScore} size={100} strokeWidth={9} label="지표 신뢰" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span className="mono" style={{ fontSize: 'var(--font-xs)', color: 'var(--text-3)' }}>ACCUMULATED_TRUST_LEVEL</span>
+              <strong style={{ fontSize: 'var(--font-lg)', color: 'var(--text-1)', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{member.trustScore >= 80 ? 'HIGH QUALITY' : member.trustScore >= 60 ? 'STABLE' : 'AUDIT REQUIRED'}</strong>
+              <span style={{ fontSize: 'var(--font-xs)', color: 'var(--text-2)' }}>WDI 공식 표결 이탈 가중 평가</span>
+            </div>
           </div>
+          {/* AuditLogPanel — PRD Section 4.2 경량 구현 */}
+          <AuditLogPanel memberId={member.id} memberName={member.name} />
         </div>
       </section>
 

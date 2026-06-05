@@ -1,0 +1,23 @@
+name: SLA Feed Generator
+
+on:
+  schedule:
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx tsx scripts/generate-sla-feed.ts
+      - run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/questions_overdue.json
+          git commit -m "chore: update SLA feed" || echo "No changes to commit"
+          git push

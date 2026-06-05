@@ -5,6 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MOCK_QUIZZES, MOCK_MEMBERS } from '@/lib/mock-data';
 import { UserProfile } from '@/lib/types';
+import Tooltip from '@/components/ui/Tooltip';
+
+/** 지표 라벨별 PRD 기반 설명 */
+const INDICATOR_TOOLTIPS: Record<string, string> = {
+  '출석률': '본회의·상임위 출석 비율\n회기 내 표결 참여율 포함',
+  '표결 이탈': 'WDI (Voting Deviation Index)\n소속 당론 대비 이탈 표결 비율\nPAI(국민 관심도) · CCI(지역구 이해관계) 가중치 포함',
+  '법안 발의': '해당 회기 내 대표 발의 법안 수',
+  '청원 답변': '시민 청원 및 공개 질의 답변 완료 비율',
+  '상임위 활동': '소속 상임위 출석 및 발언 활동 종합 지수',
+};
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -71,7 +81,7 @@ export default function BlindQuizDetailPage({ params }: PageProps) {
     else if (voteType === 'disagree') setExtraDisagree(1);
     else if (voteType === 'hold') setExtraHold(1);
 
-    // 1.2초간 암호 해독 및 평가 연동 애니메이션 연출 후 reveal
+    // PRD Section 2.1.2: 2초 딜레이 후 발언자 정보 공개 (Delayed Attribution)
     setTimeout(() => {
       setRevealState('revealed');
       if (typeof window !== 'undefined') {
@@ -87,7 +97,7 @@ export default function BlindQuizDetailPage({ params }: PageProps) {
           // ignore
         }
       }
-    }, 1200);
+    }, 2000);
   };
 
   // 통계 계산
@@ -196,8 +206,9 @@ export default function BlindQuizDetailPage({ params }: PageProps) {
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
               }} />
-              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-2)', animation: 'pulse 1.5s infinite' }}>
-                인지 편향을 필터링하고 의원 데이터를 복호화하는 중...
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-2)', animation: 'pulse 1.5s infinite', textAlign: 'center', lineHeight: 1.6 }}>
+                투표 완료. 발언자 정보를 2초 후 공개합니다.<br />
+                <span style={{ fontSize: 'var(--font-xs)', opacity: 0.7 }}>출처를 모른 채 판단하셨으므로 인지 편향이 차단됩니다.</span>
               </span>
             </div>
           )}
@@ -412,17 +423,23 @@ export default function BlindQuizDetailPage({ params }: PageProps) {
                       <span style={{ fontSize: 'var(--font-xl)', fontWeight: 800, color: 'var(--text-1)' }}>
                         {member.name} 의원
                       </span>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: 'var(--accent-bg)',
-                        color: 'var(--accent)',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontFamily: 'var(--font-mono)'
-                      }}>
-                        신뢰 점수 {member.trustScore}
-                      </span>
+                      <Tooltip
+                        content={`신뢰 점수 = 활동 이력(30%) + 체류 품질(25%) + 정보 다양성(30%) + 지역 인증(15%)\n0~100점. 점수가 높을수록 의견 반영 가중치 증가.\n(S≥85 → ×1.5, A≥70 → ×1.2, B≥50 → ×1.0, C<50 → ×0.5)`}
+                        width={300}
+                      >
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          backgroundColor: 'var(--accent-bg)',
+                          color: 'var(--accent)',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontFamily: 'var(--font-mono)',
+                          cursor: 'help',
+                        }}>
+                          신뢰 점수 {member.trustScore} ⓘ
+                        </span>
+                      </Tooltip>
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', fontSize: 'var(--font-sm)', color: 'var(--text-2)' }}>
@@ -475,11 +492,18 @@ export default function BlindQuizDetailPage({ params }: PageProps) {
                     </div>
 
                     {/* 의원 간단 실시간 통계 매치 */}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', fontSize: '11px', color: 'var(--text-3)' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', fontSize: '11px', color: 'var(--text-3)', flexWrap: 'wrap' }}>
                       {member.indicators.slice(0, 3).map((ind, i) => (
-                        <span key={i} style={{ backgroundColor: 'var(--bg-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                          {ind.label}: <strong style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>{ind.value}%</strong>
-                        </span>
+                        <Tooltip
+                          key={i}
+                          content={INDICATOR_TOOLTIPS[ind.label] ?? `${ind.label} 지표`}
+                          placement="top"
+                          width={240}
+                        >
+                          <span style={{ backgroundColor: 'var(--bg-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border)', cursor: 'help' }}>
+                            {ind.label}: <strong style={{ color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>{ind.value}%</strong> <span style={{ opacity: 0.5 }}>ⓘ</span>
+                          </span>
+                        </Tooltip>
                       ))}
                     </div>
                   </div>
