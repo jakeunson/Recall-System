@@ -5,45 +5,45 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useFactChecks, useSession } from '@/lib/hooks';
 import { FactCheckVerdict } from '@/lib/types';
-import { SkeletonCard } from '@/components/ui/SkeletonUI';
+import { SkeletonCard } from '@/components/custom/SkeletonUI';
 
 // VERDICT_MAP definition
 export const VERDICT_MAP: Record<FactCheckVerdict, { label: string; bg: string; color: string; border: string }> = {
   true: {
     label: '사실 (True)',
-    bg: 'rgba(22, 163, 74, 0.08)',
-    color: 'var(--success)',
-    border: '1px solid rgba(22, 163, 74, 0.2)',
+    bg: 'bg-success/10',
+    color: 'text-success',
+    border: 'border-success/20',
   },
   mostly_true: {
     label: '대체로 사실',
-    bg: 'rgba(13, 148, 136, 0.08)',
-    color: 'var(--accent)',
-    border: '1px solid var(--accent-border)',
+    bg: 'bg-accent/10',
+    color: 'text-accent',
+    border: 'border-accent/20',
   },
   half_true: {
     label: '절반의 사실',
-    bg: 'rgba(217, 119, 6, 0.08)',
-    color: 'var(--warning)',
-    border: '1px solid rgba(217, 119, 6, 0.2)',
+    bg: 'bg-warning/10',
+    color: 'text-warning',
+    border: 'border-warning/20',
   },
   mostly_false: {
     label: '대체로 거짓',
-    bg: 'rgba(225, 29, 72, 0.05)',
-    color: '#e11d48',
-    border: '1px solid rgba(225, 29, 72, 0.15)',
+    bg: 'bg-rose-500/5',
+    color: 'text-rose-600',
+    border: 'border-rose-500/20',
   },
   false: {
     label: '거짓 (False)',
-    bg: 'rgba(220, 38, 38, 0.08)',
-    color: 'var(--danger)',
-    border: '1px solid rgba(220, 38, 38, 0.2)',
+    bg: 'bg-danger/10',
+    color: 'text-danger',
+    border: 'border-danger/20',
   },
   hold: {
     label: '판단 보류',
-    bg: 'var(--bg-3)',
-    color: 'var(--text-2)',
-    border: '1px solid var(--border-2)',
+    bg: 'bg-card',
+    color: 'text-muted-foreground',
+    border: 'border-border-2',
   },
 };
 
@@ -83,26 +83,26 @@ export default function FactCheckListPage() {
   };
 
   return (
-    <div style={{ padding: '32px 24px', maxWidth: '1200px', margin: '0 auto' }} className="fade-in">
+    <div className="max-w-[1200px] mx-auto py-8 px-6 fade-in">
       
       {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px', marginBottom: '40px' }}>
+      <div className="flex flex-wrap justify-between items-start gap-5 mb-10">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+          <div className="flex items-center gap-2 mb-3">
             <span className="badge badge-accent">Civic Verification</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 600, fontFamily: 'var(--font-mono)' }}>PHASE 4</span>
+            <span className="text-sm text-muted-foreground font-semibold font-mono">PHASE 4</span>
           </div>
-          <h1 style={{ fontSize: 'var(--font-2xl)', fontWeight: 800, color: 'var(--text-1)', marginBottom: '12px', letterSpacing: '-0.02em' }}>
+          <h1 className="text-3xl font-extrabold text-foreground mb-3 tracking-tight">
             시민 팩트체크 게시판
           </h1>
-          <p style={{ fontSize: 'var(--font-base)', color: 'var(--text-2)', lineHeight: 1.6, maxWidth: '800px' }}>
+          <p className="text-base text-muted-foreground leading-relaxed max-w-[800px]">
             시민들이 직접 주장과 근거 및 팩트 출처를 기록하여 정치 발언의 진위 여부를 다각도로 검증하는 집단지성 커뮤니티입니다. 
             검증된 데이터와 출처 유무에 근거하여 판단해 주세요.
           </p>
         </div>
 
         {session ? (
-          <Link href="/factcheck/new" className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+          <Link href="/factcheck/new" className="btn-primary inline-flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -115,8 +115,7 @@ export default function FactCheckListPage() {
               alert('팩트체크 검증 등록은 시민 회원 로그인 후 이용하실 수 있습니다. 체험 로그인 페이지로 이동합니다.');
               router.push('/auth/login');
             }}
-            className="btn-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+            className="btn-primary inline-flex items-center gap-2 cursor-pointer"
           >
             <span>🔒</span>
             팩트체크 검증단 등록
@@ -125,92 +124,64 @@ export default function FactCheckListPage() {
       </div>
 
       {/* ── Search and Filters ── */}
-      <div 
-        className="card-base" 
-        style={{ 
-          padding: '16px 20px', 
-          marginBottom: '32px', 
-          display: 'flex', 
-          flexDirection: 'row', 
-          alignItems: 'center', 
-          gap: '16px', 
-          flexWrap: 'wrap',
-          backgroundColor: 'var(--bg-2)'
-        }}
-      >
+      <div className="bg-secondary card-base py-4 px-5 mb-8 flex flex-row items-center gap-4 flex-wrap">
         {/* Search Input */}
-        <div style={{ flex: 1, minWidth: '280px', position: 'relative' }}>
+        <div className="flex-1 min-w-[280px] relative">
           <input 
             type="text" 
             placeholder="주장, 근거, 검증단원 검색..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ 
-              width: '100%', 
-              padding: '10px 14px', 
-              borderRadius: 'var(--radius-sm)', 
-              border: '1px solid var(--border)', 
-              backgroundColor: 'var(--bg-3)', 
-              color: 'var(--text-1)',
-              fontSize: 'var(--font-sm)',
-              outline: 'none',
-            }}
+            className="w-full px-5 py-3 rounded-sm border border-border bg-card text-sm text-foreground outline-none focus:border-accent transition-colors"
           />
         </div>
 
         {/* Filters Grid */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="flex flex-wrap gap-2">
           <button 
             onClick={() => setSelectedVerdict('all')}
-            className="btn-secondary" 
-            style={{ 
-              padding: '8px 14px', 
-              fontSize: 'var(--font-xs)', 
-              backgroundColor: selectedVerdict === 'all' ? 'var(--accent-bg)' : 'var(--bg-2)',
-              borderColor: selectedVerdict === 'all' ? 'var(--accent)' : 'var(--border)'
-            }}
+            className={`btn-secondary px-5 py-2 text-xs border transition-colors ${
+              selectedVerdict === 'all' 
+                ? 'bg-accent/10 border-accent text-accent' 
+                : 'bg-card border-border text-muted-foreground hover:bg-secondary'
+            }`}
           >
             전체 보기
           </button>
           
-          {Object.entries(VERDICT_MAP).map(([verdictKey, details]) => (
-            <button
-              key={verdictKey}
-              onClick={() => setSelectedVerdict(verdictKey)}
-              className="btn-secondary"
-              style={{
-                padding: '8px 14px',
-                fontSize: 'var(--font-xs)',
-                backgroundColor: selectedVerdict === verdictKey ? details.bg : 'var(--bg-2)',
-                borderColor: selectedVerdict === verdictKey ? details.color : 'var(--border)',
-                color: selectedVerdict === verdictKey ? details.color : 'var(--text-2)'
-              }}
-            >
-              {details.label.split(' ')[0]}
-            </button>
-          ))}
+          {Object.entries(VERDICT_MAP).map(([verdictKey, details]) => {
+            const isSelected = selectedVerdict === verdictKey;
+            return (
+              <button
+                key={verdictKey}
+                onClick={() => setSelectedVerdict(verdictKey)}
+                className={`btn-secondary px-5 py-2 text-xs border transition-colors ${
+                  isSelected 
+                    ? `${details.bg} ${details.color}` 
+                    : 'bg-card border-border text-muted-foreground hover:bg-secondary'
+                }`}
+                style={{ borderColor: isSelected ? 'var(--' + details.color.replace('text-', '') + ')' : undefined }} // simplified inline style for dynamic border
+              >
+                {details.label.split(' ')[0]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ── Fact Check Grid ── */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '24px' }}>
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-6">
           {Array.from({ length: 3 }).map((_, i) => (
             <SkeletonCard key={i} height="280px" />
           ))}
         </div>
       ) : filteredChecks.length === 0 ? (
-        <div className="card-base" style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-2)', backgroundColor: 'var(--bg-2)' }}>
-          <p className="mono">NO_FACT_CHECKS_FOUND_FOR_CRITERIA</p>
+        <div className="card-base bg-secondary py-12 px-6 text-center text-muted-foreground">
+          <p className="font-mono">NO_FACT_CHECKS_FOUND_FOR_CRITERIA</p>
         </div>
       ) : (
-        <div 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', 
-            gap: '24px' 
-          }}
-        >
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(360px,1fr))] gap-6">
           {filteredChecks.map((item, idx) => {
             const verdictDetails = VERDICT_MAP[item.verdict];
             const hasSources = item.sourceUrls && item.sourceUrls.length > 0;
@@ -219,133 +190,69 @@ export default function FactCheckListPage() {
             return (
               <div 
                 key={item.id}
-                className="card-base"
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  justifyContent: 'space-between',
-                  minHeight: '280px',
-                  backgroundColor: 'var(--bg-2)',
-                  animationDelay: `${idx * 0.05}s`
-                }}
+                className="card-base bg-secondary flex flex-col justify-between min-h-[280px]"
+                style={{ animationDelay: `${idx * 0.05}s` }}
               >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                    <span className="mono" style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'var(--text-3)' }}>
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-3.5">
+                    <span className="font-mono text-xs font-bold text-muted-foreground">
                       VERIFY {item.id}
                     </span>
 
-                    <span 
-                      className="badge" 
-                      style={{ 
-                        backgroundColor: verdictDetails.bg, 
-                        color: verdictDetails.color, 
-                        border: verdictDetails.border 
-                      }}
-                    >
+                    <span className={`badge border ${verdictDetails.bg} ${verdictDetails.color} ${verdictDetails.border}`}>
                       {verdictDetails.label}
                     </span>
                   </div>
 
-                  <blockquote style={{ 
-                    fontSize: 'var(--font-base)', 
-                    fontWeight: 700, 
-                    color: 'var(--text-1)', 
-                    lineHeight: 1.5, 
-                    marginBottom: '16px',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    borderLeft: '3px solid var(--accent)',
-                    paddingLeft: '10px',
-                    fontStyle: 'normal'
-                  }}>
+                  <blockquote className="text-base font-bold text-foreground leading-relaxed mb-4 line-clamp-3 overflow-hidden text-ellipsis border-l-4 border-accent pl-3 not-italic">
                     {item.claim}
                   </blockquote>
 
-                  <p style={{ 
-                    fontSize: 'var(--font-sm)', 
-                    color: 'var(--text-2)', 
-                    lineHeight: 1.6,
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    marginBottom: '20px'
-                  }}>
+                  <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3 overflow-hidden text-ellipsis mb-5">
                     {item.evidence}
                   </p>
                 </div>
 
                 {/* Footer Controls */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--text-2)' }}>
+                <div className="border-t border-border pt-4 px-6 pb-6 flex justify-between items-center bg-card rounded-b-lg">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground">
                         {item.authorName}
                       </span>
                       {hasSources ? (
-                        <span style={{ 
-                          fontSize: '9px', 
-                          fontWeight: 700, 
-                          backgroundColor: 'rgba(22, 163, 74, 0.08)', 
-                          color: 'var(--success)', 
-                          padding: '1px 4px', 
-                          borderRadius: '3px',
-                          border: '1px solid rgba(22, 163, 74, 0.15)',
-                          fontFamily: 'var(--font-mono)'
-                        }}>
+                        <span className="text-xs font-bold font-mono bg-success/10 text-success px-1 py-0.5 rounded-sm border border-success/20">
                           출처 {item.sourceUrls.length}
                         </span>
                       ) : (
-                        <span style={{ 
-                          fontSize: '9px', 
-                          fontWeight: 700, 
-                          backgroundColor: 'var(--bg-3)', 
-                          color: 'var(--text-3)', 
-                          padding: '1px 4px', 
-                          borderRadius: '3px',
-                          border: '1px solid var(--border-2)',
-                          fontFamily: 'var(--font-mono)'
-                        }}>
+                        <span className="text-xs font-bold font-mono bg-card text-muted-foreground px-1 py-0.5 rounded-sm border border-border-2">
                           미검증
                         </span>
                       )}
                     </div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>
+                    <span className="text-xs text-muted-foreground">
                       {new Date(item.createdAt).toLocaleDateString('ko-KR')}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="flex items-center gap-2">
                     {/* Inline quick vote buttons */}
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="flex gap-1">
                       <button
                         onClick={() => handleVote(item.id, 'verified')}
                         disabled={isVoted}
-                        className="btn-secondary"
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          borderColor: isVoted ? 'var(--border)' : 'var(--success)',
-                          color: isVoted ? 'var(--text-3)' : 'var(--success)'
-                        }}
+                        className={`btn-secondary px-2 py-1 text-xs border transition-colors ${
+                          isVoted ? 'border-border text-muted-foreground opacity-50 cursor-not-allowed' : 'border-success/50 text-success hover:bg-success/5'
+                        }`}
                       >
                         ✓ 사실 {item.verifiedCount}
                       </button>
                       <button
                         onClick={() => handleVote(item.id, 'needs_review')}
                         disabled={isVoted}
-                        className="btn-secondary"
-                        style={{
-                          padding: '4px 8px',
-                          fontSize: '10px',
-                          borderColor: isVoted ? 'var(--border)' : 'var(--danger)',
-                          color: isVoted ? 'var(--text-3)' : 'var(--danger)'
-                        }}
+                        className={`btn-secondary px-2 py-1 text-xs border transition-colors ${
+                          isVoted ? 'border-border text-muted-foreground opacity-50 cursor-not-allowed' : 'border-danger/50 text-danger hover:bg-danger/5'
+                        }`}
                       >
                         ✗ 오류 {item.needsReviewCount}
                       </button>

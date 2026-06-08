@@ -6,15 +6,16 @@ import { Indicator } from '@/lib/types';
 interface RadarChartProps {
   indicators: Indicator[];
   isNeutralMode?: boolean; // 블라인드 토글 활성화 시 중립 회색 적용 여부
+  size?: number; // 차트 크기 (기본값 320)
 }
 
-export default function RadarChart({ indicators, isNeutralMode = false }: RadarChartProps) {
+export default function RadarChart({ indicators, isNeutralMode = false, size = 320 }: RadarChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // SVG 기본 설계 상수
-  const size = 320;
   const center = size / 2;
-  const maxRadius = 100;
+  const maxRadius = (size / 2) * 0.65; // 패딩 고려
+
   
   // 동적 다각형 축 레이아웃 계산 (N각형: 360도 / N 간격, 12시 방향부터 시계 방향으로 정렬)
   // 라디안 변환을 용이하게 하기 위해 각도를 라디안으로 맵핑 (-90도에서 시작하여 등분 각도씩 가산)

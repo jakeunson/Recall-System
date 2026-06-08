@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MOCK_MEMBERS, MOCK_QUESTIONS, MOCK_QUIZZES } from '@/lib/mock-data';
 import { PublicQuestion, BillProposal } from '@/lib/types';
+import { MOCK_QUESTIONS } from '@/lib/mock-data';
 import { detectEmotionWords } from '@/lib/emotion-filter';
 
 // ─── AI Toxicity 스코어 시뮬레이션 계산기 ────────────────────
@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [proposals, setProposals] = useState<BillProposal[]>([]);
   const [factchecks, setFactchecks] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
+  const [members, setMembers] = useState<any[]>([]);
 
   // 알림 토스트 상태
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -54,7 +55,7 @@ export default function DashboardPage() {
   const [videoDesc, setVideoDesc] = useState('');
 
   // 초기 상태 로드 및 동기화
-  const loadDashboardData = () => {
+  const loadDashboardData = async () => {
     if (typeof window === 'undefined') return;
 
     // 세션 로드
@@ -69,41 +70,25 @@ export default function DashboardPage() {
       setUserSession(null);
     }
 
-    // 1. 소명 질문 로드
-    let qList = [...MOCK_QUESTIONS];
-    const savedQ = localStorage.getItem('user_questions');
-    if (savedQ) {
-      try {
-        qList = [...MOCK_QUESTIONS, ...JSON.parse(savedQ)];
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setQuestions(qList);
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    
+    const [
+      { data: qList },
+      { data: pList },
+      { data: fcList },
+      { data: mList }
+    ] = await Promise.all([
+      supabase.from('questions').select('*').order('createdAt', { ascending: false }),
+      supabase.from('proposals').select('*').order('createdAt', { ascending: false }),
+      supabase.from('fact_checks').select('*').order('createdAt', { ascending: false }),
+      supabase.from('members').select('*')
+    ]);
 
-    // 2. 시민 제안 로드
-    let pList = [];
-    const savedP = localStorage.getItem('user_proposals');
-    if (savedP) {
-      try {
-        pList = JSON.parse(savedP);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setProposals(pList);
-
-    // 3. 팩트체크 제보건 로드
-    let fcList = [];
-    const savedFC = localStorage.getItem('user_factchecks');
-    if (savedFC) {
-      try {
-        fcList = JSON.parse(savedFC);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setFactchecks(fcList);
+    if (qList) setQuestions(qList as PublicQuestion[]);
+    if (pList) setProposals(pList as BillProposal[]);
+    if (fcList) setFactchecks(fcList);
+    if (mList) setMembers(mList);
 
     // 4. 의원 비디오 로드
     let vList = [];
@@ -139,7 +124,7 @@ export default function DashboardPage() {
   };
 
   // 1. 국회의원 공식 소명 등록 처리
-  const handleRegisterExplanation = (qId: string) => {
+  const handleRegisterExplanation = async (qId: string) => {
     if (!officialExplanation.trim()) return;
 
     const updatedQ = questions.map((q) => {
@@ -153,19 +138,25 @@ export default function DashboardPage() {
       return q;
     });
 
-    const userAddedOnly = updatedQ.filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id));
-    localStorage.setItem('user_questions', JSON.stringify(userAddedOnly));
     setQuestions(updatedQ);
 
-    // 변경사항 전파
-    window.dispatchEvent(new Event('storage'));
+    const target = updatedQ.find(q => q.id === qId);
+    if (target) {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      await supabase.from('questions').update({
+        status: target.status,
+        content: target.content
+      }).eq('id', qId);
+    }
+
     setActiveQuestionId(null);
     setOfficialExplanation('');
     triggerToast('공식 답변 소명서 등록이 완료되었습니다. Gemini AI에 의한 AQS 품질 채점이 자동 트리거됩니다!');
   };
 
   // 1-2. 국회의원 AQS 채점 이의 신청 처리
-  const handleRequestDispute = (qId: string) => {
+  const handleRequestDispute = async (qId: string) => {
     const updatedQ = questions.map((q) => {
       if (q.id === qId) {
         return {
@@ -177,16 +168,20 @@ export default function DashboardPage() {
       return q;
     });
 
-    const userAddedOnly = updatedQ.filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id));
-    localStorage.setItem('user_questions', JSON.stringify(userAddedOnly));
     setQuestions(updatedQ);
 
-    window.dispatchEvent(new Event('storage'));
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    await supabase.from('questions').update({
+      status: 'disputed',
+      disputeRequested: true
+    }).eq('id', qId);
+
     triggerToast('AQS AI 채점에 대한 이의 신청이 정식 등록되었습니다. 전문 자문단의 재심사 대기열로 이송되었습니다.');
   };
 
   // 2. 전문 평가단 입법 자문 합헌 판정 처리
-  const handleRegisterAdvisory = (pId: string) => {
+  const handleRegisterAdvisory = async (pId: string) => {
     if (!advisoryReview.trim()) return;
 
     const updatedP = proposals.map((pr) => {
@@ -200,17 +195,25 @@ export default function DashboardPage() {
       return pr;
     });
 
-    localStorage.setItem('user_proposals', JSON.stringify(updatedP));
     setProposals(updatedP);
 
-    window.dispatchEvent(new Event('storage'));
+    const target = updatedP.find(p => p.id === pId);
+    if (target) {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      await supabase.from('proposals').update({
+        status: target.status,
+        background: target.background
+      }).eq('id', pId);
+    }
+
     setActiveProposalId(null);
     setAdvisoryReview('');
     triggerToast('해당 시민 입법 제안에 대한 자문단 합헌 판정이 완료되었습니다.');
   };
 
   // 2-2. 전문 평가단 입법 자문 수정 권고 피드백 처리
-  const handleRegisterAmendmentFeedback = (pId: string) => {
+  const handleRegisterAmendmentFeedback = async (pId: string) => {
     if (!advisoryReview.trim()) return;
 
     const updatedP = proposals.map((pr) => {
@@ -218,24 +221,31 @@ export default function DashboardPage() {
         return {
           ...pr,
           status: 'needs_amendment' as const,
-          amendmentFeedback: advisoryReview.trim(),
           background: `${pr.background}\n\n[⚖️ 전문자문단 수정 보완 권고 의견]\n${advisoryReview.trim()}`,
         };
       }
       return pr;
     });
 
-    localStorage.setItem('user_proposals', JSON.stringify(updatedP));
     setProposals(updatedP);
 
-    window.dispatchEvent(new Event('storage'));
+    const target = updatedP.find(p => p.id === pId);
+    if (target) {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      await supabase.from('proposals').update({
+        status: target.status,
+        background: target.background
+      }).eq('id', pId);
+    }
+
     setActiveProposalId(null);
     setAdvisoryReview('');
     triggerToast('해당 시민 입법 제안에 대해 수정 권고 피드백이 등록되었습니다.');
   };
 
   // 2-3. 전문 평가단 AI 채점 이의 신청 재심사 판정 처리
-  const handleResolveDispute = (qId: string, action: 'keep' | 'raise') => {
+  const handleResolveDispute = async (qId: string, action: 'keep' | 'raise') => {
     const updatedQ = questions.map((q) => {
       if (q.id === qId) {
         const expertComment = action === 'keep'
@@ -253,34 +263,39 @@ export default function DashboardPage() {
       return q;
     });
 
-    const userAddedOnly = updatedQ.filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id));
-    localStorage.setItem('user_questions', JSON.stringify(userAddedOnly));
     setQuestions(updatedQ);
 
-    window.dispatchEvent(new Event('storage'));
+    const target = updatedQ.find(q => q.id === qId);
+    if (target) {
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      await supabase.from('questions').update({
+        status: target.status,
+        disputeRequested: target.disputeRequested,
+        disputeResolved: target.disputeResolved,
+        content: target.content
+      }).eq('id', qId);
+    }
+
     triggerToast('AQS AI 채점 이의 신청건에 대한 사법 평가 위원단 재심 판정이 종결되었습니다.');
   };
 
   // 2-4. 전문 평가단 보류 팩트체크 교차 검증 판정 처리
-  const handleResolveFactCheck = (fcId: string, verdict: any) => {
-    const saved = localStorage.getItem('user_factchecks');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      const updated = parsed.map((item: any) => {
-        if (item.id === fcId) {
-          return {
-            ...item,
-            status: 'active',
-            verdict: verdict,
-            evidence: `${item.evidence}\n\n[⚖️ 전문 자문위원 최종 팩트 교차 검증]\n전문가 전원 검증을 통해 본 주장 및 근거를 사법적 기준 하에 [${verdict}] 결과로 최종 확정 판결합니다.`,
-          };
-        }
-        return item;
-      });
-      localStorage.setItem('user_factchecks', JSON.stringify(updated));
-    }
+  const handleResolveFactCheck = async (fcId: string, verdict: any) => {
+    const target = factchecks.find(f => f.id === fcId);
+    if (!target) return;
+
+    const newEvidence = `${target.evidence}\n\n[⚖️ 전문 자문위원 최종 팩트 교차 검증]\n전문가 전원 검증을 통해 본 주장 및 근거를 사법적 기준 하에 [${verdict}] 결과로 최종 확정 판결합니다.`;
+
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    await supabase.from('fact_checks').update({
+      status: 'active',
+      verdict: verdict,
+      evidence: newEvidence
+    }).eq('id', fcId);
+
     loadDashboardData();
-    window.dispatchEvent(new Event('storage'));
     triggerToast('보류된 시민 팩트체크에 대한 전문가 최종 크로스-체크 진위 확정이 완료되었습니다.');
   };
 
@@ -312,71 +327,54 @@ export default function DashboardPage() {
   };
 
   // 4. 서비스 운영자: 시민 콘텐츠 상태 모더레이션(승인/보류/삭제)
-  const handleUpdateContentStatus = (type: 'question' | 'factcheck' | 'propose', id: string, newStatus: string) => {
-    if (type === 'question') {
-      const saved = localStorage.getItem('user_questions');
-      if (saved) {
-        const parsed = JSON.parse(saved) as PublicQuestion[];
-        const updated = parsed.map((item) => (item.id === id ? { ...item, status: newStatus as any } : item));
-        localStorage.setItem('user_questions', JSON.stringify(updated));
-      }
-    } else if (type === 'factcheck') {
-      const saved = localStorage.getItem('user_factchecks');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const updated = parsed.map((item: any) => (item.id === id ? { ...item, status: newStatus } : item));
-        localStorage.setItem('user_factchecks', JSON.stringify(updated));
-      }
-    } else if (type === 'propose') {
-      const saved = localStorage.getItem('user_proposals');
-      if (saved) {
-        const parsed = JSON.parse(saved) as BillProposal[];
-        const updated = parsed.map((item) => (item.id === id ? { ...item, status: newStatus as any } : item));
-        localStorage.setItem('user_proposals', JSON.stringify(updated));
-      }
+  const handleUpdateContentStatus = async (type: 'question' | 'factcheck' | 'propose', id: string, newStatus: string) => {
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+
+    let table = '';
+    if (type === 'question') table = 'questions';
+    else if (type === 'factcheck') table = 'fact_checks';
+    else if (type === 'propose') table = 'proposals';
+
+    if (table) {
+      await supabase.from(table).update({ status: newStatus }).eq('id', id);
     }
 
     loadDashboardData();
-    window.dispatchEvent(new Event('storage'));
     triggerToast(`해당 콘텐츠 상태가 [${newStatus}] 등급으로 안전하게 모더레이션 완료되었습니다.`);
   };
 
   return (
-    <div style={{ padding: '32px 24px', maxWidth: '1000px', margin: '0 auto', minHeight: '100vh' }} className="fade-in">
+    <div className="fade-in px-6 py-8 max-w-[1000px] mx-auto min-h-screen">
       
       {/* 토스트 배너 */}
       {toastMessage && (
-        <div style={{
-          position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
-          backgroundColor: 'var(--accent)', color: '#fff', padding: '12px 24px',
-          borderRadius: 'var(--radius-sm)', zIndex: 9999, fontWeight: 700,
-          boxShadow: 'var(--shadow-lg)', fontSize: '12px', border: '1px solid rgba(255,255,255,0.2)'
-        }}>
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 bg-accent text-white px-6 py-3 rounded-sm z-[9999] font-bold shadow-lg text-xs border border-white/20">
           ✨ {toastMessage}
         </div>
       )}
 
       {/* 헤더 섹션 */}
-      <div style={{ marginBottom: '32px', borderBottom: '1px solid var(--border)', paddingBottom: '20px' }}>
-        <h1 style={{ fontSize: 'var(--font-xl)', fontWeight: 900, letterSpacing: '-0.03em', color: 'var(--text-1)', marginBottom: '8px' }}>
+      <div className="mb-8 border-b border-border pb-5">
+        <h1 className="text-xl font-black tracking-tight text-foreground mb-2">
           🏛️ 마이 워크스페이스 대시보드
         </h1>
-        <p style={{ fontSize: '12px', color: 'var(--text-2)', margin: 0 }}>
+        <p className="text-xs text-muted-foreground m-0">
           로그인된 역할군 권한에 맞춰 특화된 정합성 분석 데이터와 계측 패널을 통합 제공합니다.
         </p>
       </div>
 
       {/* ── CASE 1: 미로그인 게이트 ── */}
       {!userSession ? (
-        <div className="card-base" style={{ padding: '48px 32px', textAlign: 'center', backgroundColor: 'var(--bg-2)' }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🔑</div>
-          <h2 style={{ fontSize: 'var(--font-lg)', fontWeight: 800, color: 'var(--text-1)', marginBottom: '8px' }}>
+        <div className="card-base px-8 py-12 text-center bg-card">
+          <div className="text-[40px] mb-4">🔑</div>
+          <h2 className="text-lg font-extrabold text-foreground mb-2">
             로그인이 필요한 워크스페이스입니다
           </h2>
-          <p style={{ fontSize: '12px', color: 'var(--text-3)', marginBottom: '24px', maxWidth: '460px', margin: '0 auto 24px auto', lineHeight: 1.6 }}>
+          <p className="text-xs text-muted-foreground mb-6 max-w-[460px] mx-auto leading-relaxed">
             국민소환제 플랫폼은 일반 시민, 공인 자문단, 피소환 대상 국회의원, 서비스 총괄 운영자 계정 프리셋을 체험 로그인 페이지에서 상시 제공합니다.
           </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+          <div className="flex justify-center gap-3">
             <Link href="/auth/login" className="btn-primary">
               체험 로그인 바로가기
             </Link>
@@ -384,54 +382,32 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div>
-          {/* 현재 로그인 계정 요약 프로필 */}
-          <div className="card-base" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', backgroundColor: 'var(--bg-3)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '10px', height: '10px', backgroundColor: 'var(--accent)', borderRadius: '50%' }}></div>
-              <span style={{ fontSize: '13px', color: 'var(--text-1)', fontWeight: 700 }}>
-                {userSession.displayName} 님 로그인 중
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent)', backgroundColor: 'var(--accent-bg)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent-border)' }}>
-                신뢰 권한 등급 {userSession.trustLevel}
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                localStorage.removeItem('user_session');
-                window.dispatchEvent(new Event('user-session-changed'));
-              }}
-              style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}
-            >
-              로그아웃
-            </button>
-          </div>
-
           {/* ── CASE 2: 시민 대시보드 (trustLevel <= 3) ── */}
           {userSession.trustLevel <= 3 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '8px' }}>나의 신뢰성 포인트</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{userSession.trustLevel * 120} RP</strong>
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-2">나의 신뢰성 포인트</div>
+                  <strong className="text-xl text-accent font-mono">{userSession.trustLevel * 120} RP</strong>
                 </div>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '8px' }}>해결한 블라인드 평가</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>4 건 / 8건</strong>
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-2">해결한 블라인드 평가</div>
+                  <strong className="text-xl text-foreground font-mono">4 건 / 8건</strong>
                 </div>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '8px' }}>입법 공감 및 질의 서명 수</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>2 회</strong>
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-2">입법 공감 및 질의 서명 수</div>
+                  <strong className="text-xl text-foreground font-mono">2 회</strong>
                 </div>
               </div>
 
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px' }}>💡 시민 활동 가이드</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 16px 0' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4">💡 시민 활동 가이드</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed mb-4">
                   회원님은 신뢰성 기반의 시민 유권자 레벨을 부여받았습니다. 블라인드 평가 퀴즈에서 공정하고 사심 없이 일관된 응답을 많이 할수록 신뢰성 가중치 점수가 상승하며, 더 높은 등급의 정합성 가중치 서명권을 행사할 수 있게 됩니다.
                 </p>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <Link href="/blind" className="btn-secondary" style={{ padding: '8px 16px', fontSize: '12px' }}>블라인드 퀴즈 풀기 ↗</Link>
-                  <Link href="/questions" className="btn-secondary" style={{ padding: '8px 16px', fontSize: '12px' }}>공개 소명 보러가기 ↗</Link>
+                <div className="flex gap-3">
+                  <Link href="/blind" className="btn-secondary px-4 py-2 text-xs">블라인드 퀴즈 풀기 ↗</Link>
+                  <Link href="/questions" className="btn-secondary px-4 py-2 text-xs">공개 소명 보러가기 ↗</Link>
                 </div>
               </div>
             </div>
@@ -439,49 +415,49 @@ export default function DashboardPage() {
 
           {/* ── CASE 3: 전문 평가단 대시보드 (trustLevel === 4) ── */}
           {userSession.trustLevel === 4 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="flex flex-col gap-6">
               
               {/* 전문 자문위원 입법 심사 대기열 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4 flex items-center gap-2">
                   🚨 전문 자문위원 입법 심사 대기열 ({proposals.filter(p => p.status !== 'finalized' && p.status !== 'needs_amendment').length}건)
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4, marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground leading-snug mb-5">
                   시민들이 제안한 입법 제안서 중 자문단 사법 검토 의견 배정이 요구되는 태스크입니다. 타당성을 분석하여 최종 합헌 승인을 내리거나 수정/보완을 권고할 수 있습니다.
                 </p>
 
                 {proposals.filter(p => p.status !== 'finalized' && p.status !== 'needs_amendment').length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>검토 대기 중인 시민 입법 제안이 없습니다.</p>
+                  <div className="p-6 text-center bg-secondary border border-dashed border-border rounded-sm">
+                    <p className="text-xs text-muted-foreground m-0">검토 대기 중인 시민 입법 제안이 없습니다.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="flex flex-col gap-4">
                     {proposals.filter(p => p.status !== 'finalized' && p.status !== 'needs_amendment').map((pr) => (
-                      <div key={pr.id} style={{ border: '1px solid var(--border-2)', borderRadius: 'var(--radius-sm)', padding: '16px', backgroundColor: 'var(--bg-2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent)' }}>시민 입법 코드: {pr.id}</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>제안자: {pr.authorName}</span>
+                      <div key={pr.id} className="border border-border-2 rounded-sm p-4 bg-secondary">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-extrabold text-accent">시민 입법 코드: {pr.id}</span>
+                          <span className="text-xs text-muted-foreground">제안자: {pr.authorName}</span>
                         </div>
-                        <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '6px' }}>{pr.title}</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.5, marginBottom: '12px' }}>{pr.purpose}</p>
+                        <h4 className="text-base font-extrabold text-foreground mb-1.5">{pr.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">{pr.purpose}</p>
 
                         {activeProposalId === pr.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                          <div className="flex flex-col gap-2 mt-3 border-t border-border pt-3">
                             <textarea
                               placeholder="입법 청원에 대한 헌법 정합성 분석, 자문 검토 소견 또는 수정 보완 요구 사항을 명확히 작성해 주세요."
                               value={advisoryReview}
                               onChange={(e) => setAdvisoryReview(e.target.value)}
                               rows={4}
-                              style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none' }}
+                              className="w-full p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none focus:border-accent"
                             />
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button onClick={() => handleRegisterAdvisory(pr.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--accent)' }}>🟢 합헌 판정 및 승인</button>
-                              <button onClick={() => handleRegisterAmendmentFeedback(pr.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--warning)', borderColor: 'var(--warning)' }}>🟡 입법 수정 권고</button>
-                              <button onClick={() => { setActiveProposalId(null); setAdvisoryReview(''); }} className="btn-secondary" style={{ padding: '6px 14px', fontSize: '11px' }}>취소</button>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleRegisterAdvisory(pr.id)} className="btn-primary px-5 py-3 text-sm bg-accent border-accent">🟢 합헌 판정 및 승인</button>
+                              <button onClick={() => handleRegisterAmendmentFeedback(pr.id)} className="btn-primary px-5 py-3 text-sm bg-warning border-warning">🟡 입법 수정 권고</button>
+                              <button onClick={() => { setActiveProposalId(null); setAdvisoryReview(''); }} className="btn-secondary px-5 py-3 text-sm">취소</button>
                             </div>
                           </div>
                         ) : (
-                          <button onClick={() => setActiveProposalId(pr.id)} className="btn-secondary" style={{ padding: '6px 14px', fontSize: '11px', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                          <button onClick={() => setActiveProposalId(pr.id)} className="btn-secondary px-5 py-3 text-sm border-accent text-accent">
                             ⚖️ 자문 검토서 작성하기
                           </button>
                         )}
@@ -492,34 +468,34 @@ export default function DashboardPage() {
               </div>
 
               {/* 🤖 AI 채점 이의 신청 재심사 대기열 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4 flex items-center gap-2">
                   🤖 AI 채점 이의 신청 재심사 대기열 ({questions.filter(q => q.status === 'disputed').length}건)
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4, marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground leading-snug mb-5">
                   국회의원이 AI AQS 채점 결과에 불복하여 이의를 신청한 안건입니다. 전문가 합의를 거쳐 최초 채점을 유지하거나 10점의 가산 상향 조정을 승인할 수 있습니다.
                 </p>
 
                 {questions.filter(q => q.status === 'disputed').length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>재심사 대기 중인 이의 신청 안건이 없습니다.</p>
+                  <div className="p-6 text-center bg-secondary border border-dashed border-border rounded-sm">
+                    <p className="text-xs text-muted-foreground m-0">재심사 대기 중인 이의 신청 안건이 없습니다.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="flex flex-col gap-4">
                     {questions.filter(q => q.status === 'disputed').map((q) => (
-                      <div key={q.id} style={{ border: '1px solid var(--border-2)', borderRadius: 'var(--radius-sm)', padding: '16px', backgroundColor: 'var(--bg-2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--warning)' }}>이의제기 의원: {q.targetMember} ({q.targetMemberId})</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>코드: {q.questionCode}</span>
+                      <div key={q.id} className="border border-border-2 rounded-sm p-4 bg-secondary">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-extrabold text-warning">이의제기 의원: {q.targetMember} ({q.targetMemberId})</span>
+                          <span className="text-xs text-muted-foreground">코드: {q.questionCode}</span>
                         </div>
-                        <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '6px' }}>{q.title}</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.5, marginBottom: '12px' }}>{q.content.substring(0, 160)}...</p>
+                        <h4 className="text-base font-extrabold text-foreground mb-1.5">{q.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3">{q.content.substring(0, 160)}...</p>
 
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => handleResolveDispute(q.id, 'keep')} className="btn-secondary" style={{ padding: '6px 14px', fontSize: '11px', borderColor: 'var(--danger)', color: 'var(--danger)', cursor: 'pointer' }}>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleResolveDispute(q.id, 'keep')} className="btn-secondary px-5 py-3 text-sm border-danger text-danger">
                             🔴 최초 AI 채점 유지 (기각)
                           </button>
-                          <button onClick={() => handleResolveDispute(q.id, 'raise')} className="btn-primary" style={{ padding: '6px 14px', fontSize: '11px', backgroundColor: 'var(--accent)', cursor: 'pointer' }}>
+                          <button onClick={() => handleResolveDispute(q.id, 'raise')} className="btn-primary px-5 py-3 text-sm bg-accent">
                             🟢 소명 구체성 인정 (+10 가산 승인)
                           </button>
                         </div>
@@ -530,33 +506,33 @@ export default function DashboardPage() {
               </div>
 
               {/* 📋 시민 팩트체크 교차 검증 대기열 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4 flex items-center gap-2">
                   📋 시민 팩트체크 교차 검증 대기열 ({factchecks.filter(fc => fc.status === 'held').length}건)
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4, marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground leading-snug mb-5">
                   운영자가 사실 관계 검증 유보(보류) 처리를 내린 팩트체크 제보 자료입니다. 전문 사법적 기준 하에 근거를 조사해 최종 진위 판결을 확정합니다.
                 </p>
 
                 {factchecks.filter(fc => fc.status === 'held').length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>보류 처리된 크로스-체크 대기열이 깨끗합니다.</p>
+                  <div className="p-6 text-center bg-secondary border border-dashed border-border rounded-sm">
+                    <p className="text-xs text-muted-foreground m-0">보류 처리된 크로스-체크 대기열이 깨끗합니다.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="flex flex-col gap-4">
                     {factchecks.filter(fc => fc.status === 'held').map((fc) => (
-                      <div key={fc.id} style={{ border: '1px solid var(--border-2)', borderRadius: 'var(--radius-sm)', padding: '16px', backgroundColor: 'var(--bg-2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent)' }}>제보 코드: {fc.id}</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>제보자: {fc.authorName}</span>
+                      <div key={fc.id} className="border border-border-2 rounded-sm p-4 bg-secondary">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-extrabold text-accent">제보 코드: {fc.id}</span>
+                          <span className="text-xs text-muted-foreground">제보자: {fc.authorName}</span>
                         </div>
-                        <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '6px' }}>{fc.title || fc.claim}</h4>
-                        <p style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.5, marginBottom: '12px' }}><strong>주장:</strong> {fc.claim}<br /><strong>근거:</strong> {fc.evidence}</p>
+                        <h4 className="text-base font-extrabold text-foreground mb-1.5">{fc.title || fc.claim}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3"><strong>주장:</strong> {fc.claim}<br /><strong>근거:</strong> {fc.evidence}</p>
 
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button onClick={() => handleResolveFactCheck(fc.id, 'true')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', backgroundColor: 'var(--bg-2)', padding: '4px 10px', borderRadius: '3px', border: '1px solid var(--success)', cursor: 'pointer' }}>🟢 참(True) 확정</button>
-                          <button onClick={() => handleResolveFactCheck(fc.id, 'half_true')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--warning)', backgroundColor: 'var(--bg-2)', padding: '4px 10px', borderRadius: '3px', border: '1px solid var(--warning)', cursor: 'pointer' }}>🟡 절반의 참 확정</button>
-                          <button onClick={() => handleResolveFactCheck(fc.id, 'false')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger)', backgroundColor: 'var(--bg-2)', padding: '4px 10px', borderRadius: '3px', border: '1px solid var(--danger)', cursor: 'pointer' }}>🔴 거짓(False) 확정</button>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleResolveFactCheck(fc.id, 'true')} className="text-xs font-bold text-success bg-secondary px-2.5 py-1 rounded-sm border border-success hover:bg-success/10">🟢 참(True) 확정</button>
+                          <button onClick={() => handleResolveFactCheck(fc.id, 'half_true')} className="text-xs font-bold text-warning bg-secondary px-2.5 py-1 rounded-sm border border-warning hover:bg-warning/10">🟡 절반의 참 확정</button>
+                          <button onClick={() => handleResolveFactCheck(fc.id, 'false')} className="text-xs font-bold text-danger bg-secondary px-2.5 py-1 rounded-sm border border-danger hover:bg-danger/10">🔴 거짓(False) 확정</button>
                         </div>
                       </div>
                     ))}
@@ -569,69 +545,69 @@ export default function DashboardPage() {
 
           {/* ── CASE 4: 국회의원 대시보드 (trustLevel === 5 - 김철수 의원) ── */}
           {userSession.trustLevel === 5 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="flex flex-col gap-6">
               
               {/* 국회의원 4대 의정 정합 지표판 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-                <div className="card-base" style={{ padding: '20px', border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '6px' }}>WDI (이탈지수)</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>14% <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--success)' }}>(매우 우수)</span></strong>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="card-base p-5 border border-border">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-1.5">WDI (이탈지수)</div>
+                  <strong className="text-xl text-accent font-mono">14% <span className="text-sm font-semibold text-success">(매우 우수)</span></strong>
                 </div>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '6px' }}>본회의 출석률</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>92.5%</strong>
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-1.5">본회의 출석률</div>
+                  <strong className="text-xl text-foreground font-mono">92.5%</strong>
                 </div>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '6px' }}>공개 질의 답변율</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>100%</strong>
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-1.5">공개 질의 답변율</div>
+                  <strong className="text-xl text-foreground font-mono">100%</strong>
                 </div>
-                <div className="card-base" style={{ padding: '20px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-3)', marginBottom: '6px' }}>내로남불 방어율</div>
-                  <strong style={{ fontSize: '20px', color: 'var(--text-1)', fontFamily: 'var(--font-mono)' }}>85%</strong>
+                <div className="card-base p-5">
+                  <div className="text-xs font-extrabold text-muted-foreground mb-1.5">내로남불 방어율</div>
+                  <strong className="text-xl text-foreground font-mono">85%</strong>
                 </div>
               </div>
 
               {/* 미처리 소명 요구서 카드 목록 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4 flex items-center gap-2">
                   🚨 미처리 시민 공개 소명 요구서 ({questions.filter((q) => q.targetMemberId === 'M01' && q.status === 'open').length}건)
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4, marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground leading-snug mb-5">
                   시민 서명이 확보되어 7일 이내 공식 답변 의무가 부여된 민원 문서입니다. 이곳에 공식 소명서를 등록하는 즉시 실시간 인지 편향 제거 마스킹 시스템을 통과해 시민 대시보드와 의원 리포트카드에 Gemini AI에 의한 AQS 품질 채점이 자동 연동됩니다.
                 </p>
 
                 {questions.filter((q) => q.targetMemberId === 'M01' && q.status === 'open').length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>답변을 기입해야 할 미결 소명 요구서가 없습니다. 깨끗한 의정 신뢰 지표를 달성하고 있습니다!</p>
+                  <div className="p-6 text-center bg-secondary border border-dashed border-border rounded-sm">
+                    <p className="text-xs text-muted-foreground m-0">답변을 기입해야 할 미결 소명 요구서가 없습니다. 깨끗한 의정 신뢰 지표를 달성하고 있습니다!</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="flex flex-col gap-4">
                     {questions.filter((q) => q.targetMemberId === 'M01' && q.status === 'open').map((q) => (
-                      <div key={q.id} style={{ border: '1px solid var(--border-2)', borderRadius: 'var(--radius-sm)', padding: '18px', backgroundColor: 'var(--bg-2)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--danger)', backgroundColor: 'rgba(220, 38, 38, 0.08)', padding: '2px 8px', borderRadius: '4px' }}>🚨 긴급 소명 의무</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>동의 서명: {q.voteCount}명</span>
+                      <div key={q.id} className="border border-border-2 rounded-sm p-6 bg-secondary">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-extrabold text-danger bg-danger/10 px-2 py-0.5 rounded">🚨 긴급 소명 의무</span>
+                          <span className="text-sm text-muted-foreground">동의 서명: {q.voteCount}명</span>
                         </div>
-                        <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '6px' }}>{q.title}</h4>
-                        <p style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5, marginBottom: '14px' }}>{q.content}</p>
+                        <h4 className="text-base font-extrabold text-foreground mb-1.5">{q.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed mb-3.5">{q.content}</p>
 
                         {activeQuestionId === q.id ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px', marginTop: '14px' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent)' }}>📋 공식 소명문 기입란</span>
+                          <div className="flex flex-col gap-2.5 border-t border-border pt-5 mt-5">
+                            <span className="text-xs font-extrabold text-accent">📋 공식 소명문 기입란</span>
                             <textarea
                               placeholder="구체적인 추진 일자, 관련 법령 정보, 정합적 수치 및 실행 계획을 명확히 담아 소명서를 작성하십시오. 공문서 형태에 어긋나거나 상투적인 정치적 구호만 반복할 경우 AI AQS 평가에서 심각한 감점이 주어집니다."
                               value={officialExplanation}
                               onChange={(e) => setOfficialExplanation(e.target.value)}
                               rows={5}
-                              style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none', lineHeight: 1.6 }}
+                              className="w-full p-3 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none leading-relaxed focus:border-accent"
                             />
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button onClick={() => handleRegisterExplanation(q.id)} className="btn-primary" style={{ padding: '6px 14px', fontSize: '11px' }}>소명 답변 제출하기</button>
-                              <button onClick={() => { setActiveQuestionId(null); setOfficialExplanation(''); }} className="btn-secondary" style={{ padding: '6px 14px', fontSize: '11px' }}>작성 취소</button>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleRegisterExplanation(q.id)} className="btn-primary px-5 py-3 text-sm">소명 답변 제출하기</button>
+                              <button onClick={() => { setActiveQuestionId(null); setOfficialExplanation(''); }} className="btn-secondary px-5 py-3 text-sm">작성 취소</button>
                             </div>
                           </div>
                         ) : (
-                          <button onClick={() => setActiveQuestionId(q.id)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '12px' }}>
+                          <button onClick={() => setActiveQuestionId(q.id)} className="btn-primary px-4 py-2 text-xs">
                             ✍️ 즉시 소명 답변서 작성
                           </button>
                         )}
@@ -642,38 +618,38 @@ export default function DashboardPage() {
               </div>
 
               {/* 완료된 소명 답변 AQS 분석 및 이의 신청 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-4 flex items-center gap-2">
                   📊 완료된 시민 소명 답변 및 AQS 채점 분석 ({questions.filter((q) => q.targetMemberId === 'M01' && (q.status === 'answered' || q.status === 'disputed')).length}건)
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', lineHeight: 1.4, marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground leading-snug mb-5">
                   공식 제출이 완료된 소명서에 대한 AI (AQS) 채점 품질 피드백입니다. AI 분석 점수에 납득하지 못할 경우 정식 이의를 신청하여 인간 법률 전문가(전문 평가단)의 재검토를 받을 수 있습니다.
                 </p>
 
                 {questions.filter((q) => q.targetMemberId === 'M01' && (q.status === 'answered' || q.status === 'disputed')).length === 0 ? (
-                  <div style={{ padding: '24px', textAlign: 'center', backgroundColor: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-sm)' }}>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>등록된 소명 답변이 존재하지 않습니다.</p>
+                  <div className="p-6 text-center bg-secondary border border-dashed border-border rounded-sm">
+                    <p className="text-xs text-muted-foreground m-0">등록된 소명 답변이 존재하지 않습니다.</p>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="flex flex-col gap-4">
                     {questions.filter((q) => q.targetMemberId === 'M01' && (q.status === 'answered' || q.status === 'disputed')).map((q) => {
                       const aqsScore = 75 + (q.content.length % 20); // 75 ~ 95점 사이 mock AQS 점수
                       const isDisputed = q.status === 'disputed' || q.disputeRequested;
                       return (
-                        <div key={q.id} style={{ border: '1px solid var(--border-2)', borderRadius: 'var(--radius-sm)', padding: '18px', backgroundColor: 'var(--bg-2)' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--success)' }}>답변 코드: {q.questionCode}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>작성일: {q.createdAt.substring(0, 10)}</span>
+                        <div key={q.id} className="border border-border-2 rounded-sm p-6 bg-secondary">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-extrabold text-success">답변 코드: {q.questionCode}</span>
+                            <span className="text-sm text-muted-foreground">작성일: {q.createdAt.substring(0, 10)}</span>
                           </div>
-                          <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '6px' }}>{q.title}</h4>
+                          <h4 className="text-base font-extrabold text-foreground mb-1.5">{q.title}</h4>
                           
-                          <div style={{ backgroundColor: 'var(--bg-3)', padding: '12px', borderRadius: '4px', marginBottom: '14px', border: '1px solid var(--border)' }}>
-                            <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-2)', display: 'block', marginBottom: '4px' }}>🤖 AI AQS 채점 결과 피드백</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <strong style={{ fontSize: '20px', color: isDisputed ? 'var(--warning)' : 'var(--accent)', fontFamily: 'var(--font-mono)' }}>
+                          <div className="bg-card p-3 rounded-sm mb-3.5 border border-border">
+                            <span className="text-xs font-extrabold text-muted-foreground block mb-1">🤖 AI AQS 채점 결과 피드백</span>
+                            <div className="flex items-center gap-3">
+                              <strong className={`text-xl font-mono ${isDisputed ? 'text-warning' : 'text-accent'}`}>
                                 {isDisputed ? '재심사 중' : `${aqsScore}점`}
                               </strong>
-                              <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>
+                              <span className="text-sm text-muted-foreground">
                                 {isDisputed ? '전문 자문위원단 합의 평가가 진행되고 있습니다.' : '구체적인 정책 수치 및 대안 제시 우수성 인정.'}
                               </span>
                             </div>
@@ -682,13 +658,12 @@ export default function DashboardPage() {
                           {!isDisputed ? (
                             <button
                               onClick={() => handleRequestDispute(q.id)}
-                              className="btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '11px', borderColor: 'var(--warning)', color: 'var(--warning)' }}
+                              className="btn-secondary px-3 py-3 text-sm border-warning text-warning"
                             >
                               ⚖️ AQS AI 채점 결과 이의 신청 (전문가 리뷰)
                             </button>
                           ) : (
-                            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span className="text-sm font-bold text-warning flex items-center gap-1">
                               ⏳ 전문가 크로스체크 재심사 계류 중
                             </span>
                           )}
@@ -703,38 +678,38 @@ export default function DashboardPage() {
 
           {/* ── CASE 5: 서비스 총괄 운영자 대시보드 (trustLevel === 10 - Admin) ── */}
           {userSession.trustLevel === 10 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <div className="flex flex-col gap-8">
               
               {/* 영상 업로드 폼 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="card-base p-8">
+                <h3 className="text-sm font-extrabold text-foreground mb-1 flex items-center gap-2">
                   🎥 국회의원 의정 활동 영상관 데이터 등록
                 </h3>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground mb-5">
                   국회의원별 질의응답 및 단독 인터뷰 영상을 시스템에 배포 등록합니다. 등록된 영상은 의원 리포트카드에 자동 바인딩됩니다.
                 </p>
 
-                <form onSubmit={handleUploadVideo} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-2)' }}>피등록 국회의원 선택</label>
+                <form onSubmit={handleUploadVideo} className="flex flex-col gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-extrabold text-muted-foreground">피등록 국회의원 선택</label>
                       <select
                         value={videoMemberId}
                         onChange={(e) => setVideoMemberId(e.target.value)}
-                        style={{ padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none' }}
+                        className="p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none focus:border-accent"
                       >
-                        {MOCK_MEMBERS.map((m) => (
+                        {members.map((m) => (
                           <option key={m.id} value={m.id}>{m.name} 의원 ({m.party} · {m.region})</option>
                         ))}
                       </select>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-2)' }}>영상 카테고리</label>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-sm font-extrabold text-muted-foreground">영상 카테고리</label>
                       <select
                         value={videoCategory}
                         onChange={(e) => setVideoCategory(e.target.value)}
-                        style={{ padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none' }}
+                        className="p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none focus:border-accent"
                       >
                         <option value="인터뷰">인터뷰 (Interview)</option>
                         <option value="질의응답">질의응답 (Q&A)</option>
@@ -742,49 +717,49 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-2)' }}>영상 타이틀</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-extrabold text-muted-foreground">영상 타이틀</label>
                     <input
                       type="text"
                       placeholder="의정 활동 영상의 공식 대표 제목을 입력해 주십시오."
                       value={videoTitle}
                       onChange={(e) => setVideoTitle(e.target.value)}
-                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none' }}
+                      className="p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none focus:border-accent"
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-2)' }}>스트리밍 영상 URL (.mp4 또는 YouTube Embed)</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-extrabold text-muted-foreground">스트리밍 영상 URL (.mp4 또는 YouTube Embed)</label>
                     <input
                       type="text"
                       placeholder="비디오 파일 경로 혹은 유튜브 스트리밍 소스 링크"
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
-                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none', fontFamily: 'var(--font-mono)' }}
+                      className="p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none font-mono focus:border-accent"
                     />
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-2)' }}>영상 부가 세부 설명</label>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-extrabold text-muted-foreground">영상 부가 세부 설명</label>
                     <textarea
                       placeholder="영상의 상세 의도 및 논평 설명을 적어 주십시오."
                       value={videoDesc}
                       onChange={(e) => setVideoDesc(e.target.value)}
                       rows={3}
-                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid var(--border-2)', backgroundColor: 'var(--bg-3)', color: 'var(--text-1)', fontSize: '12px', outline: 'none', lineHeight: 1.5 }}
+                      className="p-2.5 rounded border border-border-2 bg-secondary text-foreground text-xs outline-none leading-relaxed focus:border-accent"
                     />
                   </div>
 
-                  <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', padding: '10px 24px' }}>
+                  <button type="submit" className="btn-primary self-start px-6 py-3">
                     🎥 의정 영상 공식 배포 퍼블리싱
                   </button>
                 </form>
               </div>
 
               {/* 시민 생성 글 모더레이션 통제반 */}
-              <div className="card-base" style={{ padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-1)', margin: 0 }}>
+              <div className="card-base p-8">
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-extrabold text-foreground m-0">
                     🚨 시민 등록 콘텐츠 실시간 모더레이션 통제반
                   </h3>
                   <button
@@ -826,30 +801,26 @@ export default function DashboardPage() {
                       window.dispatchEvent(new Event('storage'));
                       triggerToast('🚨 AI 위험도 70점 이상의 모든 콘텐츠를 일괄 차단(비공개) 처리했습니다.');
                     }}
-                    className="btn-secondary"
-                    style={{
-                      borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '11px',
-                      padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
-                    }}
+                    className="btn-secondary px-3 py-3 text-sm border-danger text-danger flex items-center gap-1 cursor-pointer"
                   >
                     ⚡ AI 위험 콘텐츠 일괄 차단
                   </button>
                 </div>
-                <p style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '20px' }}>
+                <p className="text-sm text-muted-foreground mb-5">
                   시민들이 직접 제보/발의한 소명 요구서 및 팩트체크 리스트를 실시간 감독하여 불온/편향적인 콘텐츠를 보류하거나 비공개(숨김) 처리합니다.
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="flex flex-col gap-5">
                   
                   {/* 1. 팩트체크 제보건 관리 */}
                   <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-2)', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '10px' }}>
+                    <h4 className="text-xs font-extrabold text-muted-foreground border-b border-border pb-1.5 mb-2.5">
                       📋 시민 신규 팩트체크 제보건 ({factchecks.length}건)
                     </h4>
                     {factchecks.length === 0 ? (
-                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>동적으로 등록된 시민 제보 팩트체크가 없습니다.</span>
+                      <span className="text-sm text-muted-foreground">동적으로 등록된 시민 제보 팩트체크가 없습니다.</span>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="flex flex-col gap-2">
                         {[...factchecks]
                           .sort((a, b) => {
                             const scoreA = a.aiToxicityScore ?? calcToxicityScore(a.claim + ' ' + a.evidence);
@@ -860,29 +831,24 @@ export default function DashboardPage() {
                             const score = fc.aiToxicityScore ?? calcToxicityScore(fc.claim + ' ' + fc.evidence);
                             const isHighRisk = score >= 70;
                             return (
-                              <div key={fc.id} style={{ 
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                backgroundColor: isHighRisk ? 'rgba(220, 38, 38, 0.03)' : 'var(--bg-3)', 
-                                padding: '10px 14px', borderRadius: '4px', 
-                                border: isHighRisk ? '1px solid var(--danger)' : '1px solid var(--border)' 
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <strong style={{ fontSize: '12px', color: 'var(--text-1)' }}>{fc.title || fc.claim}</strong>
+                              <div key={fc.id} className={`flex justify-between items-center px-5 py-3 rounded-sm border ${isHighRisk ? 'bg-danger/5 border-danger' : 'bg-secondary border-border'}`}>
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <strong className="text-xs text-foreground">{fc.title || fc.claim}</strong>
                                     {score >= 70 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--danger)', backgroundColor: 'rgba(220,38,38,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🚨 AI 위험 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-danger bg-danger/10 px-1.5 py-0.5 rounded-sm">🚨 AI 위험 ({score}점)</span>
                                     ) : score >= 40 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--warning)', backgroundColor: 'rgba(217,119,6,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟡 AI 주의 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-warning bg-warning/10 px-1.5 py-0.5 rounded-sm">🟡 AI 주의 ({score}점)</span>
                                     ) : (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--success)', backgroundColor: 'rgba(22,163,74,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟢 AI 정상 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-success bg-success/10 px-1.5 py-0.5 rounded-sm">🟢 AI 정상 ({score}점)</span>
                                     )}
                                   </div>
-                                  <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>판정: {fc.verdict} · 상태: {fc.status || 'active'}</span>
+                                  <span className="text-xs text-muted-foreground">판정: {fc.verdict} · 상태: {fc.status || 'active'}</span>
                                 </div>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'active')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🟢 승인</button>
-                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'held')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--warning)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🟡 보류</button>
-                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'hidden')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🔴 삭제</button>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'active')} className="text-xs font-bold text-success bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-success/10">🟢 승인</button>
+                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'held')} className="text-xs font-bold text-warning bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-warning/10">🟡 보류</button>
+                                  <button onClick={() => handleUpdateContentStatus('factcheck', fc.id, 'hidden')} className="text-xs font-bold text-danger bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-danger/10">🔴 삭제</button>
                                 </div>
                               </div>
                             );
@@ -893,13 +859,13 @@ export default function DashboardPage() {
 
                   {/* 2. 소명요구 질의 관리 */}
                   <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-2)', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '10px' }}>
+                    <h4 className="text-xs font-extrabold text-muted-foreground border-b border-border pb-1.5 mb-2.5">
                       💬 시민 공개 소명 요구 질의 ({questions.filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id)).length}건)
                     </h4>
                     {questions.filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id)).length === 0 ? (
-                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>동적으로 등록된 시민 질의가 없습니다.</span>
+                      <span className="text-sm text-muted-foreground">동적으로 등록된 시민 질의가 없습니다.</span>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="flex flex-col gap-2">
                         {questions
                           .filter((q) => !MOCK_QUESTIONS.some((mock) => mock.id === q.id))
                           .sort((a, b) => {
@@ -911,28 +877,23 @@ export default function DashboardPage() {
                             const score = q.aiToxicityScore ?? calcToxicityScore(q.title + ' ' + q.content);
                             const isHighRisk = score >= 70;
                             return (
-                              <div key={q.id} style={{ 
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                backgroundColor: isHighRisk ? 'rgba(220, 38, 38, 0.03)' : 'var(--bg-3)', 
-                                padding: '10px 14px', borderRadius: '4px', 
-                                border: isHighRisk ? '1px solid var(--danger)' : '1px solid var(--border)' 
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <strong style={{ fontSize: '12px', color: 'var(--text-1)' }}>{q.title}</strong>
+                              <div key={q.id} className={`flex justify-between items-center px-5 py-3 rounded-sm border ${isHighRisk ? 'bg-danger/5 border-danger' : 'bg-secondary border-border'}`}>
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <strong className="text-xs text-foreground">{q.title}</strong>
                                     {score >= 70 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--danger)', backgroundColor: 'rgba(220,38,38,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🚨 AI 위험 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-danger bg-danger/10 px-1.5 py-0.5 rounded-sm">🚨 AI 위험 ({score}점)</span>
                                     ) : score >= 40 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--warning)', backgroundColor: 'rgba(217,119,6,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟡 AI 주의 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-warning bg-warning/10 px-1.5 py-0.5 rounded-sm">🟡 AI 주의 ({score}점)</span>
                                     ) : (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--success)', backgroundColor: 'rgba(22,163,74,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟢 AI 정상 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-success bg-success/10 px-1.5 py-0.5 rounded-sm">🟢 AI 정상 ({score}점)</span>
                                     )}
                                   </div>
-                                  <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>대상의원: {q.targetMember} · 상태: {q.status}</span>
+                                  <span className="text-xs text-muted-foreground">대상의원: {q.targetMember} · 상태: {q.status}</span>
                                 </div>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                  <button onClick={() => handleUpdateContentStatus('question', q.id, 'open')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🟢 승인</button>
-                                  <button onClick={() => handleUpdateContentStatus('question', q.id, 'hidden')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🔴 삭제</button>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleUpdateContentStatus('question', q.id, 'open')} className="text-xs font-bold text-success bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-success/10">🟢 승인</button>
+                                  <button onClick={() => handleUpdateContentStatus('question', q.id, 'hidden')} className="text-xs font-bold text-danger bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-danger/10">🔴 삭제</button>
                                 </div>
                               </div>
                             );
@@ -943,13 +904,13 @@ export default function DashboardPage() {
 
                   {/* 3. 시민입법 관리 */}
                   <div>
-                    <h4 style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-2)', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '10px' }}>
+                    <h4 className="text-xs font-extrabold text-muted-foreground border-b border-border pb-1.5 mb-2.5">
                       🏛️ 시민 입법 발의 제안 ({proposals.length}건)
                     </h4>
                     {proposals.length === 0 ? (
-                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>동적으로 등록된 시민 입법안이 없습니다.</span>
+                      <span className="text-sm text-muted-foreground">동적으로 등록된 시민 입법안이 없습니다.</span>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div className="flex flex-col gap-2">
                         {[...proposals]
                           .sort((a, b) => {
                             const scoreA = a.aiToxicityScore ?? calcToxicityScore(a.title + ' ' + a.purpose);
@@ -960,28 +921,23 @@ export default function DashboardPage() {
                             const score = pr.aiToxicityScore ?? calcToxicityScore(pr.title + ' ' + pr.purpose);
                             const isHighRisk = score >= 70;
                             return (
-                              <div key={pr.id} style={{ 
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                                backgroundColor: isHighRisk ? 'rgba(220, 38, 38, 0.03)' : 'var(--bg-3)', 
-                                padding: '10px 14px', borderRadius: '4px', 
-                                border: isHighRisk ? '1px solid var(--danger)' : '1px solid var(--border)' 
-                              }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <strong style={{ fontSize: '12px', color: 'var(--text-1)' }}>{pr.title}</strong>
+                              <div key={pr.id} className={`flex justify-between items-center px-5 py-3 rounded-sm border ${isHighRisk ? 'bg-danger/5 border-danger' : 'bg-secondary border-border'}`}>
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <strong className="text-xs text-foreground">{pr.title}</strong>
                                     {score >= 70 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--danger)', backgroundColor: 'rgba(220,38,38,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🚨 AI 위험 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-danger bg-danger/10 px-1.5 py-0.5 rounded-sm">🚨 AI 위험 ({score}점)</span>
                                     ) : score >= 40 ? (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--warning)', backgroundColor: 'rgba(217,119,6,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟡 AI 주의 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-warning bg-warning/10 px-1.5 py-0.5 rounded-sm">🟡 AI 주의 ({score}점)</span>
                                     ) : (
-                                      <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--success)', backgroundColor: 'rgba(22,163,74,0.08)', padding: '2px 6px', borderRadius: '3px' }}>🟢 AI 정상 ({score}점)</span>
+                                      <span className="text-xs font-extrabold text-success bg-success/10 px-1.5 py-0.5 rounded-sm">🟢 AI 정상 ({score}점)</span>
                                     )}
                                   </div>
-                                  <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>제안자: {pr.authorName} · 상태: {pr.status}</span>
+                                  <span className="text-xs text-muted-foreground">제안자: {pr.authorName} · 상태: {pr.status}</span>
                                 </div>
-                                <div style={{ display: 'flex', gap: '6px' }}>
-                                  <button onClick={() => handleUpdateContentStatus('propose', pr.id, 'community_review')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--success)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🟢 승인</button>
-                                  <button onClick={() => handleUpdateContentStatus('propose', pr.id, 'rejected')} style={{ fontSize: '10px', fontWeight: 700, color: 'var(--danger)', backgroundColor: 'var(--bg-2)', padding: '4px 8px', borderRadius: '3px', border: '1px solid var(--border-2)', cursor: 'pointer' }}>🔴 삭제</button>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleUpdateContentStatus('propose', pr.id, 'community_review')} className="text-xs font-bold text-success bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-success/10">🟢 승인</button>
+                                  <button onClick={() => handleUpdateContentStatus('propose', pr.id, 'rejected')} className="text-xs font-bold text-danger bg-card px-2 py-1 rounded-sm border border-border-2 hover:bg-danger/10">🔴 삭제</button>
                                 </div>
                               </div>
                             );

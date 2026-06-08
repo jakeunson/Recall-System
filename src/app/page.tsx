@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useDashboardData, useSession } from '@/lib/hooks';
-import { SkeletonCard, SkeletonText } from '@/components/ui/SkeletonUI';
+import { SkeletonCard, SkeletonText } from '@/components/custom/SkeletonUI';
 import GaugeRing from '@/components/GaugeRing';
 import StatCard from '@/components/StatCard';
-import { MOCK_MEMBERS } from '@/lib/mock-data';
+import { createClient } from '@/utils/supabase/client';
+import { Member } from '@/lib/types';
+import { Button } from '@/components/ui/button';
 
 const BOARD_TYPE_LABEL: Record<string, string> = {
   blind: '블라인드 평가',
@@ -15,101 +17,81 @@ const BOARD_TYPE_LABEL: Record<string, string> = {
 };
 
 const BOARD_TYPE_COLOR: Record<string, string> = {
-  blind: 'rgba(26,26,46,0.07)',
-  question: 'rgba(217,119,6,0.08)',
-  bill: 'rgba(22,163,74,0.08)',
-};
-
-const BOARD_TYPE_TEXT: Record<string, string> = {
-  blind: 'var(--accent)',
-  question: 'var(--warning)',
-  bill: 'var(--success)',
+  blind: 'bg-accent/10 text-accent',
+  question: 'bg-warning/10 text-warning',
+  bill: 'bg-success/10 text-success',
 };
 
 export default function Home() {
   const { session } = useSession();
-  const { stats, recentPosts, loading } = useDashboardData();
+  const { stats, recentPosts, loading: dashboardLoading } = useDashboardData();
   const [activeTab, setActiveTab] = useState<'all' | 'blind' | 'question' | 'bill'>('all');
 
-  const avgTrustScore = Math.round(
-    MOCK_MEMBERS.reduce((sum, m) => sum + m.trustScore, 0) / MOCK_MEMBERS.length
-  );
+  const [members, setMembers] = useState<Member[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from('members').select('*');
+      if (data) {
+        setMembers(data);
+      }
+      setMembersLoading(false);
+    };
+    fetchMembers();
+  }, []);
+
+  const avgTrustScore = members.length > 0 
+    ? Math.round(members.reduce((sum, m) => sum + m.trustScore, 0) / members.length)
+    : 0;
 
   const filteredPosts = recentPosts.filter(post =>
     activeTab === 'all' ? true : post.boardType === activeTab
   );
 
-  const topMembers = [...MOCK_MEMBERS].sort((a, b) => b.trustScore - a.trustScore).slice(0, 5);
+  const topMembers = [...members].sort((a, b) => b.trustScore - a.trustScore).slice(0, 5);
+  
+  const loading = dashboardLoading || membersLoading;
 
   return (
-    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="fade-in flex flex-col gap-6">
 
       {/* ── 환영 배너 ── */}
-      <section style={{
-        background: 'linear-gradient(135deg, var(--accent) 0%, #2d2d4e 100%)',
-        borderRadius: 'var(--radius-md)',
-        padding: '32px 28px',
-        color: '#fff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '24px',
-        flexWrap: 'wrap',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{
-              fontSize: 'var(--font-xs)',
-              fontWeight: 600,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              padding: '3px 10px',
-              borderRadius: '20px',
-              color: '#fff',
-            }}>
+      <section className="rounded-xl p-8 md:p-10 text-white flex justify-between items-center gap-6 flex-wrap bg-accent shadow-sm relative overflow-hidden">
+        {/* Subtle background decoration */}
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div className="flex flex-col gap-3 relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold bg-white/10 px-2.5 py-1 rounded-full text-white/90 border border-white/10 backdrop-blur-sm">
               🟢 서비스 운영 중
             </span>
             {session && (
-              <span style={{ fontSize: 'var(--font-xs)', color: 'rgba(255,255,255,0.7)' }}>
+              <span className="text-xs font-medium text-white/80">
                 {session.displayName}님 환영합니다
               </span>
             )}
           </div>
-          <h1 style={{ fontSize: 'var(--font-2xl)', fontWeight: 700, color: '#fff', lineHeight: 1.2 }}>
+          <h1 className="text-2xl md:text-[28px] font-bold text-white leading-tight tracking-tight mt-1">
             국민소환제
           </h1>
-          <p style={{ fontSize: 'var(--font-sm)', color: 'rgba(255,255,255,0.8)', lineHeight: 1.7, maxWidth: '520px' }}>
+          <p className="text-lg text-white/70 leading-relaxed max-w-[520px]">
             국회의원의 의정 활동을 데이터와 시민의 눈으로 함께 검증합니다.
           </p>
         </div>
         {!session && (
-          <Link href="/auth/login" style={{
-            backgroundColor: '#fff',
-            color: 'var(--accent)',
-            padding: '11px 24px',
-            borderRadius: 'var(--radius-sm)',
-            fontWeight: 700,
-            fontSize: 'var(--font-sm)',
-            flexShrink: 0,
-            textDecoration: 'none',
-            transition: 'opacity 0.15s',
-          }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
+          <Link href="/auth/login" className="bg-white text-accent px-6 py-3 rounded-md font-bold text-base shrink-0 transition-opacity hover:opacity-90 shadow-sm relative z-10">
             참여하기 →
           </Link>
         )}
       </section>
 
       {/* ── 통계 카드 ── */}
-      <section style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '12px',
-      }}>
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="card-base" style={{ height: '100px' }}>
+            <div key={i} className="card-base h-[100px]">
               <SkeletonText width="60%" height="11px" />
               <SkeletonText width="80%" height="28px" />
             </div>
@@ -125,41 +107,35 @@ export default function Home() {
       </section>
 
       {/* ── 메인 본문 ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '20px', alignItems: 'flex-start' }}>
+      <div className="flex flex-col gap-6">
 
         {/* 좌측: 최근 활동 피드 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="flex flex-col gap-6 w-full">
 
-          {/* 빠른 참여 카드 3개 */}
-          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {/* 빠른 참여 카드 4개 */}
+          <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { href: '/blind', emoji: '👁️', title: '블라인드 평가', desc: '발언자 정보 없이 의정 발언을 평가해보세요', color: 'var(--accent)' },
-              { href: '/questions', emoji: '💬', title: '공개 질의', desc: '의원에게 직접 질문을 등록하고 공감을 모아보세요', color: 'var(--warning)' },
-              { href: '/bills', emoji: '📋', title: '법안 토론', desc: '개정 법안의 조문 변경 사항을 비교하고 의견 나눠요', color: 'var(--success)' },
+              { href: '/blind', emoji: '👁️', title: '블라인드 평가', desc: '발언자 정보 없이 의정 발언을 평가해보세요', color: 'text-accent' },
+              { href: '/questions', emoji: '💬', title: '공개 질의', desc: '의원에게 직접 질문을 등록하고 공감을 모아보세요', color: 'text-warning' },
+              { href: '/bills', emoji: '📋', title: '법안 토론', desc: '개정 법안의 조문 변경 사항을 비교하고 의견 나눠요', color: 'text-success' },
+              { href: '/members', emoji: '📊', title: '의원 리포트', desc: '데이터 기반으로 분석된 의원별 종합 평가 리포트', color: 'text-blue-500' },
             ].map((item) => (
-              <Link key={item.href} href={item.href} className="card-base" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                textDecoration: 'none',
-                color: 'inherit',
-                padding: '18px',
-              }}>
-                <div style={{ fontSize: '22px' }}>{item.emoji}</div>
-                <div style={{ fontWeight: 700, fontSize: 'var(--font-sm)', color: item.color }}>{item.title}</div>
-                <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-2)', lineHeight: 1.5 }}>{item.desc}</div>
+              <Link key={item.href} href={item.href} className="card-base flex flex-col gap-2 p-6 hover:scale-[1.02] transition-transform">
+                <div className="text-[24px]">{item.emoji}</div>
+                <div className={`font-bold text-sm ${item.color}`}>{item.title}</div>
+                <div className="text-xs text-muted-foreground leading-relaxed">{item.desc}</div>
               </Link>
             ))}
           </section>
 
           {/* 최근 활동 피드 */}
-          <section style={{ backgroundColor: 'var(--bg-2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <section className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
             {/* 탭 헤더 */}
-            <div style={{ padding: '14px 16px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <h2 style={{ fontSize: 'var(--font-base)', fontWeight: 700, color: 'var(--text-1)' }}>최근 활동</h2>
+            <div className="pt-4 px-5 border-b border-border">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-foreground">최근 활동</h2>
               </div>
-              <div className="tab-bar" style={{ borderBottom: 'none', gap: '0' }}>
+              <div className="flex items-center gap-2">
                 {([
                   { key: 'all', label: '전체' },
                   { key: 'blind', label: '블라인드' },
@@ -169,8 +145,7 @@ export default function Home() {
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key)}
-                    className={`tab-item${activeTab === tab.key ? ' active' : ''}`}
-                    style={{ padding: '8px 14px' }}
+                    className={`tab-item px-4 py-2 text-sm ${activeTab === tab.key ? 'active' : ''}`}
                   >
                     {tab.label}
                   </button>
@@ -180,39 +155,29 @@ export default function Home() {
 
             {/* 피드 리스트 */}
             {loading ? (
-              <div style={{ padding: '12px' }}>
+              <div className="p-4">
                 {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} height="60px" />)}
               </div>
             ) : filteredPosts.length === 0 ? (
-              <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--text-3)', fontSize: 'var(--font-sm)' }}>
+              <div className="p-12 text-center text-muted-foreground text-sm">
                 게시글이 없습니다.
               </div>
             ) : (
               <div>
                 {filteredPosts.map((post) => (
-                  <Link key={post.id} href={post.href} className="post-row">
+                  <Link key={post.id} href={post.href} className="post-row px-5 py-4 flex items-center gap-4 hover:bg-muted transition-colors border-b border-border last:border-0">
                     {/* 분류 뱃지 */}
-                    <span style={{
-                      flexShrink: 0,
-                      fontSize: 'var(--font-xs)',
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      backgroundColor: BOARD_TYPE_COLOR[post.boardType] ?? 'var(--bg-3)',
-                      color: BOARD_TYPE_TEXT[post.boardType] ?? 'var(--text-2)',
-                      minWidth: '60px',
-                      textAlign: 'center',
-                    }}>
+                    <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-md ${BOARD_TYPE_COLOR[post.boardType] || 'bg-muted text-muted-foreground'} min-w-[70px] text-center`}>
                       {BOARD_TYPE_LABEL[post.boardType] ?? post.boardType}
                     </span>
 
                     {/* 제목 */}
-                    <span style={{ flex: 1, fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="flex-1 text-sm font-medium text-foreground truncate">
                       {post.title}
                     </span>
 
                     {/* 메타 */}
-                    <span style={{ flexShrink: 0, fontSize: 'var(--font-xs)', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                    <span className="shrink-0 text-xs text-muted-foreground whitespace-nowrap">
                       {post.meta}
                     </span>
                   </Link>
@@ -222,81 +187,19 @@ export default function Home() {
           </section>
 
           {/* 블라인드 평가 CTA */}
-          <section style={{
-            backgroundColor: 'var(--bg-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '20px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '20px',
-            flexWrap: 'wrap',
-          }}>
+          <section className="bg-card border border-border rounded-xl p-6 flex items-center justify-between gap-6 flex-wrap shadow-sm">
             <div>
-              <h3 style={{ fontSize: 'var(--font-base)', fontWeight: 700, marginBottom: '4px' }}>
+              <h3 className="text-base font-bold mb-2">
                 👁️ 블라인드 평가 참여하기
               </h3>
-              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-2)', lineHeight: 1.5 }}>
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 발언자 정보 없이 오직 내용만으로 평가합니다. 확증 편향 없는 시민 검증에 참여하세요.
               </p>
             </div>
-            <Link href="/blind" className="btn-primary" style={{ flexShrink: 0 }}>
+            <Link href="/blind" className="btn-primary shrink-0 px-6 py-3">
               평가 참여 →
             </Link>
           </section>
-        </div>
-
-        {/* 우측: 신뢰 지수 상위 의원 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ backgroundColor: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: 'var(--font-sm)', fontWeight: 700 }}>신뢰 지수 TOP 5</h2>
-              <Link href="/members" style={{ fontSize: 'var(--font-xs)', color: 'var(--text-3)', textDecoration: 'none' }}>
-                전체 보기
-              </Link>
-            </div>
-            {topMembers.map((member, idx) => (
-              <Link key={member.id} href={`/members/${member.id}`} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 16px',
-                borderBottom: idx < topMembers.length - 1 ? '1px solid var(--border)' : 'none',
-                textDecoration: 'none',
-                color: 'inherit',
-                transition: 'background-color 0.1s',
-              }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-3)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <span style={{
-                  fontSize: 'var(--font-xs)',
-                  fontWeight: 700,
-                  color: idx === 0 ? 'var(--warning)' : 'var(--text-3)',
-                  width: '20px',
-                  textAlign: 'center',
-                  flexShrink: 0,
-                }}>
-                  {idx + 1}
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {member.name}
-                  </div>
-                  <div style={{ fontSize: 'var(--font-xs)', color: 'var(--text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {member.party}
-                  </div>
-                </div>
-                <GaugeRing value={member.trustScore} size={40} strokeWidth={4} />
-              </Link>
-            ))}
-          </div>
-
-          {/* 의원 리포트 바로가기 */}
-          <Link href="/members" className="btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: '11px' }}>
-            전체 의원 리포트 →
-          </Link>
         </div>
       </div>
     </div>

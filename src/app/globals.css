@@ -1,63 +1,121 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import 'tailwindcss';
+@import "tw-animate-css";
 
-:root {
-  /* Community Light Mode */
-  --bg: #f4f6f8;
-  --bg-2: #ffffff;
-  --bg-3: #f0f2f5;
-  --border: rgba(0, 0, 0, 0.08);
-  --border-2: rgba(0, 0, 0, 0.15);
-  --text-1: #1a1a2e;
-  --text-2: #555568;
-  --text-3: #9898aa;
+@custom-variant dark (&:is(.dark *));
 
-  --accent: #1a1a2e;
-  --accent-bg: rgba(26, 26, 46, 0.05);
-  --accent-border: rgba(26, 26, 46, 0.12);
+/* ─────────────────────────────────────────────────────────────
+   CLAUDE GRAY DESIGN SYSTEM
+   Sophisticated Neutral / Zinc / Slate Aesthetic
+   국민소환제 — Civic Tech Platform
+   ───────────────────────────────────────────────────────────── */
 
-  --success: #16a34a;
-  --warning: #d97706;
-  --danger: #dc2626;
+@theme {
+  /* ── 컬러 토큰: Claude Gray 라이트 테마 ── */
+  --color-bg:        #ffffff;   /* Pure White — 최하위 배경 */
+  --color-bg-2:      #fcfcfc;   /* Off White — 카드/패널 배경 */
+  --color-bg-3:      #f4f4f5;   /* Zinc-100 — 인셋 영역, 사이드바 배경 */
 
-  --header-bg: rgba(255, 255, 255, 0.95);
+  --color-border:    #e4e4e7;   /* Zinc-200 — 기본 구분선 */
+  --color-border-2:  #d4d4d8;   /* Zinc-300 — 강조 구분선 */
 
-  /* Radius — 커뮤니티 스타일은 좀 더 라운드 */
+  --color-text-1:    #09090b;   /* Zinc-950 — 주요 텍스트 */
+  --color-text-2:    #52525b;   /* Zinc-600 — 보조 텍스트 */
+  --color-text-3:    #a1a1aa;   /* Zinc-400 — 캡션 */
+
+  --color-accent:    #18181b;   /* Zinc-900 — 메인 강조 (블랙에 가까운 다크 그레이) */
+  --color-accent-bg: #f4f4f5;   /* Zinc-100 — 강조 배경 (주로 hover) */
+  --color-accent-border: #e4e4e7;
+
+  --color-teal:      #0f766e;   /* Teal-700 — 신뢰 포인트 데이터 (차분하게 변경) */
+  --color-teal-bg:   #f0fdfa;   /* Teal-50 */
+
+  --color-success:   #16a34a;   /* Green-600 */
+  --color-warning:   #d97706;   /* Amber-600 */
+  --color-danger:    #dc2626;   /* Red-600 */
+
+  /* ── 폰트 ── */
+  --font-sans:  'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  --font-serif: 'Lora', 'Georgia', serif;
+  --font-mono:  'IBM Plex Mono', 'Menlo', 'Monaco', monospace;
+
+  /* ── 반지름 ── */
   --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
 
-  /* Font Sizes — 커뮤니티 기본 크기 */
-  --font-xs: 12px;
-  --font-sm: 14px;
-  --font-base: 15px;
-  --font-lg: 17px;
-  --font-xl: 20px;
-  --font-2xl: 26px;
+  /* ── 그림자 ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.03);
 
-  --font-sans: 'Noto Sans KR', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  /* ── 레이아웃 ── */
+  --topbar-h: 56px;
+  --sidebar-w: 240px;
+  --content-max: 1200px;
 
-  /* Layout — 탑바 전용 */
-  --topbar-h: 52px;
-  --content-max: 1080px;
-
-  /* Shadow */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  /* ── 타이포 스케일 ── */
+  --font-xs:   12px;
+  --font-sm:   13px;
+  --font-base: 14px;
+  --font-lg:   16px;
+  --font-xl:   20px;
+  --font-2xl:  24px;
 }
 
+/* ─── CSS 변수 매핑 (컴포넌트 호환용) ─────────────────────── */
+:root {
+  --bg:            var(--color-bg);
+  --bg-2:          var(--color-bg-2);
+  --bg-3:          var(--color-bg-3);
+  --border:        var(--color-border);
+  --border-2:      var(--color-border-2);
+  --text-1:        var(--color-text-1);
+  --text-2:        var(--color-text-2);
+  --text-3:        var(--color-text-3);
+  --accent:        var(--color-accent);
+  --accent-bg:     var(--color-accent-bg);
+  --accent-border: var(--color-accent-border);
+  --success:       var(--color-success);
+  --warning:       var(--color-warning);
+  --danger:        var(--color-danger);
+  --header-bg:     rgba(255, 255, 255, 0.85);
+
+  /* SHADCN THEME MAP TO CLAUDE GRAY */
+  --background:        #ffffff;
+  --foreground:        #09090b;
+  --card:              #ffffff;
+  --card-foreground:   #09090b;
+  --popover:           #ffffff;
+  --popover-foreground:#09090b;
+  --primary:           #18181b;
+  --primary-foreground:#ffffff;
+  --secondary:         #f4f4f5;
+  --secondary-foreground:#18181b;
+  --muted:             #f4f4f5;
+  --muted-foreground:  #71717a;
+  --accent-foreground: #18181b;
+  --destructive:       #ef4444;
+  --destructive-foreground: #f8fafc;
+  --ring:              #d4d4d8;
+  --radius:            0.5rem;
+}
+
+.dark {
+  /* Add dark mode mapping if needed later */
+}
+
+/* ─── 리셋 & 베이스 ─────────────────────────────────────────── */
 * {
   box-sizing: border-box;
-  padding: 0;
-  margin: 0;
 }
 
 html, body {
   height: 100%;
   width: 100%;
-  background-color: var(--bg);
-  color: var(--text-1);
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
   font-family: var(--font-sans);
   font-size: var(--font-base);
   -webkit-font-smoothing: antialiased;
@@ -75,9 +133,13 @@ code, pre, .mono {
   font-variant-numeric: tabular-nums;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.3;
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--foreground);
+    letter-spacing: -0.02em;
+  }
 }
 
 a {
@@ -92,19 +154,20 @@ button {
   font-family: inherit;
 }
 
-/* Scrollbar */
+/* ─── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
 
-/* ── Card ── */
+/* ─── Card ──────────────────────────────────────────────────── */
 .card-base {
   background-color: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 20px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .card-base:hover {
@@ -112,36 +175,40 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
-/* ── Primary Button ── */
+/* ─── Primary Button ─────────────────────────────────────────── */
 .btn-primary {
   background-color: var(--accent);
   color: #ffffff;
-  border: none;
-  padding: 10px 20px;
+  border: 1px solid var(--accent);
+  padding: 9px 20px;
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: var(--font-sm);
-  transition: opacity 0.15s, transform 0.1s;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   cursor: pointer;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-primary:hover {
-  opacity: 0.88;
+  opacity: 0.9;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
 }
 
 .btn-primary:active {
   transform: scale(0.98);
+  box-shadow: none;
 }
 
-/* ── Secondary Button ── */
+/* ─── Secondary Button ───────────────────────────────────────── */
 .btn-secondary {
   border: 1px solid var(--border-2);
   color: var(--text-2);
-  padding: 9px 18px;
+  padding: 8px 18px;
   border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: var(--font-sm);
@@ -164,16 +231,17 @@ button {
   opacity: 0.85;
 }
 
-/* ── Badge ── */
+/* ─── Badge ──────────────────────────────────────────────────── */
 .badge {
-  font-size: var(--font-xs);
+  font-size: 10px;
   font-weight: 600;
-  padding: 3px 9px;
+  padding: 2px 8px;
   border-radius: 20px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .badge-accent {
@@ -189,62 +257,62 @@ button {
 }
 
 .badge-warning {
-  background-color: rgba(217, 119, 6, 0.08);
+  background-color: rgba(180, 83, 9, 0.08);
   color: var(--warning);
-  border: 1px solid rgba(217, 119, 6, 0.2);
+  border: 1px solid rgba(180, 83, 9, 0.2);
 }
 
 .badge-danger {
-  background-color: rgba(220, 38, 38, 0.08);
+  background-color: rgba(185, 28, 28, 0.08);
   color: var(--danger);
-  border: 1px solid rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(185, 28, 28, 0.2);
 }
 
-/* ── Community Post Row (게시판 행 형식) ── */
+/* ─── Post Row (게시판 행) ────────────────────────────────────── */
 .post-row {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 13px 16px;
   border-bottom: 1px solid var(--border);
-  transition: background-color 0.1s;
+  transition: background-color 0.12s;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
 }
 
 .post-row:hover {
-  background-color: var(--bg-3);
+  background-color: rgba(124, 92, 62, 0.03);
 }
 
 .post-row:last-child {
   border-bottom: none;
 }
 
-/* ── Tab Bar ── */
+/* ─── Tab Bar ────────────────────────────────────────────────── */
 .tab-bar {
   display: flex;
   align-items: center;
   gap: 0;
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .tab-item {
   padding: 10px 18px;
   font-size: var(--font-sm);
   font-weight: 500;
-  color: var(--text-2);
+  color: var(--text-3);
   cursor: pointer;
   border: none;
   background: none;
   border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   transition: color 0.15s, border-color 0.15s;
   white-space: nowrap;
 }
 
 .tab-item:hover {
-  color: var(--text-1);
+  color: var(--text-2);
 }
 
 .tab-item.active {
@@ -253,7 +321,7 @@ button {
   border-bottom-color: var(--accent);
 }
 
-/* ── Section Header ── */
+/* ─── Section Header ─────────────────────────────────────────── */
 .section-header {
   display: flex;
   align-items: center;
@@ -267,10 +335,10 @@ button {
   color: var(--text-1);
 }
 
-/* ── Input ── */
+/* ─── Input ──────────────────────────────────────────────────── */
 .input-base {
   width: 100%;
-  padding: 10px 14px;
+  padding: 9px 13px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-2);
   background-color: var(--bg-2);
@@ -290,21 +358,21 @@ button {
   color: var(--text-3);
 }
 
-/* ── Divider ── */
+/* ─── Divider ────────────────────────────────────────────────── */
 .divider {
   border: none;
   border-top: 1px solid var(--border);
   margin: 16px 0;
 }
 
-/* ── Animations ── */
+/* ─── Animations ─────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes spin {
@@ -313,10 +381,34 @@ button {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50%       { opacity: 0.5; }
 }
 
 @keyframes skeletonPulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 0.4; }
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 0.35; }
+}
+
+/* ─── Skeleton ───────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-3) 25%,
+    rgba(188, 161, 118, 0.12) 50%,
+    var(--bg-3) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-accent/50;
+  }
 }

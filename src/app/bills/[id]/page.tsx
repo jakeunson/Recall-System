@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useBillDetail, useSession } from '@/lib/hooks';
 import { ReplyType } from '@/lib/types';
 import { detectEmotionWords, isValidSourceUrl } from '@/lib/emotion-filter';
-import { SkeletonCard } from '@/components/ui/SkeletonUI';
+import { SkeletonCard } from '@/components/custom/SkeletonUI';
 
 interface PageProps {
   params: Promise<{ id: string }>;

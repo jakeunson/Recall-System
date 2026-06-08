@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MOCK_QUIZZES, MOCK_MEMBERS } from '@/lib/mock-data';
 import { UserProfile } from '@/lib/types';
-import Tooltip from '@/components/ui/Tooltip';
+import Tooltip from '@/components/custom/Tooltip';
 
 /** 지표 라벨별 PRD 기반 설명 */
 const INDICATOR_TOOLTIPS: Record<string, string> = {

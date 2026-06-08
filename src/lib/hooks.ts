@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import type {
   Member,
   BlindQuiz,
@@ -17,15 +18,8 @@ import type {
   ReactionType
 } from './types';
 import {
-  MOCK_MEMBERS,
-  MOCK_QUIZZES,
-  MOCK_FACTCHECKS,
-  MOCK_BILL_THREADS,
   MOCK_BILL_REPLIES,
-  MOCK_QUESTIONS,
-  MOCK_RECENT_POSTS,
   MOCK_PLATFORM_STATS,
-  MOCK_PROPOSALS
 } from './mock-data';
 
 // ─── DELAY UTILITY ───────────────────────────────────
@@ -80,38 +74,7 @@ const setLocalStorageItem = <T>(key: string, value: T) => {
   window.dispatchEvent(new Event(`local-storage-${key}-changed`));
 };
 
-// Mock Member Evaluations initial data
-const MOCK_INITIAL_EVALUATIONS: MemberEvaluation[] = [
-  {
-    id: 'E001',
-    memberId: 'M01',
-    userId: 'U002',
-    userDisplayName: '성실한정치참여자',
-    score: 85,
-    comment: '법안 발의 내용이 서민 경제에 실질적인 도움이 되고 있습니다.',
-    createdAt: '2026-05-18T10:00:00+09:00'
-  },
-  {
-    id: 'E002',
-    memberId: 'M01',
-    userId: 'U003',
-    userDisplayName: '지나가는데이터어널리스트',
-    score: 60,
-    comment: 'WDI 지표 중 사회안전 지수는 우수하나 경제부문 입법이 다소 아쉽네요.',
-    createdAt: '2026-05-19T14:30:00+09:00'
-  },
-  {
-    id: 'E003',
-    memberId: 'M02',
-    userId: 'U002',
-    userDisplayName: '성실한정치참여자',
-    score: 45,
-    comment: '회의 출석률 지표(64%)를 소명하는 과정이 더 명확해야 신뢰가 갈 것 같습니다.',
-    createdAt: '2026-05-20T11:00:00+09:00'
-  }
-];
-
-// Custom Hook to sync localStorage across components/tabs
+// Custom Hook to sync localStorage across components/tabs (used for legacy mocks like replies)
 const useLocalStorageState = <T>(key: string, initialValue: T): [T, (val: T) => void, boolean] => {
   const [state, setState] = useState<T>(initialValue);
   const [loading, setLoading] = useState(true);
@@ -140,6 +103,28 @@ const useLocalStorageState = <T>(key: string, initialValue: T): [T, (val: T) => 
   };
 
   return [state, updateValue, loading];
+};
+
+// Supabase Collection Hook
+export const useSupabaseCollection = <T>(tableName: string) => {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const supabase = createClient();
+      const { data: result } = await supabase.from(tableName).select('*').order('createdAt', { ascending: false, nullsFirst: false });
+      if (result) setData(result as T[]);
+      setLoading(false);
+    };
+    fetch();
+  }, [tableName]);
+
+  const updateData = (newData: T[]) => {
+    setData(newData);
+  };
+
+  return [data, updateData, loading] as const;
 };
 
 // ─── 1. SESSION MANAGEMENT HOOK ──────────────────────
@@ -193,11 +178,11 @@ export const useSession = () => {
 
 // ─── 2. DASHBOARD DATA HOOK ─────────────────────────
 export const useDashboardData = () => {
-  const [quizzes] = useLocalStorageState<BlindQuiz[]>('political_os_quizzes', MOCK_QUIZZES);
-  const [factchecks] = useLocalStorageState<FactCheck[]>('political_os_factchecks', MOCK_FACTCHECKS);
-  const [bills] = useLocalStorageState<BillThread[]>('political_os_bills', MOCK_BILL_THREADS);
-  const [questions] = useLocalStorageState<PublicQuestion[]>('political_os_questions', MOCK_QUESTIONS);
-  const [proposals] = useLocalStorageState<BillProposal[]>('political_os_proposals', MOCK_PROPOSALS);
+  const [quizzes] = useSupabaseCollection<BlindQuiz>('quizzes');
+  const [factchecks] = useSupabaseCollection<FactCheck>('fact_checks');
+  const [bills] = useSupabaseCollection<BillThread>('bill_threads');
+  const [questions] = useSupabaseCollection<PublicQuestion>('questions');
+  const [proposals] = useSupabaseCollection<BillProposal>('proposals');
 
   const [loading, setLoading] = useState(true);
   interface PlatformStats {
@@ -218,20 +203,20 @@ export const useDashboardData = () => {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await delay();
+      await delay(200);
+      
+      const supabase = createClient();
+      const { count: memberCount } = await supabase.from('members').select('*', { count: 'exact', head: true });
 
-      // Aggregate counts from current localStorage state
       setStats({
-        memberCount: MOCK_MEMBERS.length,
+        memberCount: memberCount || MOCK_PLATFORM_STATS.memberCount,
         verifiedBillCount: 12400 + bills.length + proposals.length,
         activeQuestionCount: questions.filter(q => q.status === 'open').length,
         factcheckCount: 840 + factchecks.length,
       });
 
-      // Combine and formulate recent activity list sorted by date
       const posts: PostSummary[] = [];
 
-      // Add recent blind quizzes
       quizzes.slice(0, 2).forEach(q => {
         posts.push({
           id: q.id,
@@ -244,20 +229,18 @@ export const useDashboardData = () => {
         });
       });
 
-      // Add recent proposals
       proposals.slice(0, 2).forEach(p => {
         posts.push({
           id: p.id,
           boardType: 'propose',
           title: p.title,
-          meta: `${new Date(p.createdAt).toLocaleDateString()} · 공감 ${p.upvoteCount} · 자문단 ${p.legalOpinions.length > 0 ? '검토완료' : '검토중'}`,
+          meta: `${new Date(p.createdAt).toLocaleDateString()} · 공감 ${p.upvoteCount} · 자문단 ${p.legalOpinions && p.legalOpinions.length > 0 ? '검토완료' : '검토중'}`,
           badge: p.status === 'community_review' ? '시민 검토 중' : '자문단 검토 중',
           badgeColor: 'var(--accent)',
           href: `/bills/propose`,
         });
       });
 
-      // Add recent questions
       questions.slice(0, 2).forEach(q => {
         posts.push({
           id: q.id,
@@ -270,7 +253,6 @@ export const useDashboardData = () => {
         });
       });
 
-      // Add recent factchecks
       factchecks.slice(0, 2).forEach(fc => {
         let verdictLabel = '대기';
         let verdictColor = 'var(--text-3)';
@@ -308,7 +290,7 @@ export const useDashboardData = () => {
 
 // ─── 3. BLIND QUIZ HOOKS ──────────────────────────────
 export const useQuizzes = () => {
-  const [quizzes, setQuizzes, quizLoading] = useLocalStorageState<BlindQuiz[]>('political_os_quizzes', MOCK_QUIZZES);
+  const [quizzes, setQuizzes, quizLoading] = useSupabaseCollection<BlindQuiz>('quizzes');
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
   const { session } = useSession();
@@ -325,8 +307,8 @@ export const useQuizzes = () => {
       return false;
     }
 
-    // Network Delay
-    await delay(300);
+    const quiz = quizzes.find(q => q.id === quizId);
+    if (!quiz) return false;
 
     // Optimistic Update
     const updated = quizzes.map((q) => {
@@ -340,10 +322,17 @@ export const useQuizzes = () => {
       }
       return q;
     });
-
     setQuizzes(updated);
 
-    // Record user vote to local history
+    // Supabase update
+    const supabase = createClient();
+    const updatePayload = {
+      agreeCount: voteType === 'agree' ? quiz.agreeCount + 1 : quiz.agreeCount,
+      disagreeCount: voteType === 'disagree' ? quiz.disagreeCount + 1 : quiz.disagreeCount,
+      holdCount: voteType === 'hold' ? quiz.holdCount + 1 : quiz.holdCount,
+    };
+    await supabase.from('quizzes').update(updatePayload).eq('id', quizId);
+
     const userVotes = getLocalStorageItem<Record<string, BlindVoteType>>('user_blind_votes', {});
     userVotes[quizId] = voteType;
     setLocalStorageItem('user_blind_votes', userVotes);
@@ -368,11 +357,10 @@ export const useMemberDetail = (memberId: string) => {
   useEffect(() => {
     const loadMember = async () => {
       setLoading(true);
-      await delay(400);
-
-      const found = MOCK_MEMBERS.find((m) => m.id === memberId);
+      const supabase = createClient();
+      const { data: found } = await supabase.from('members').select('*').eq('id', memberId).single();
+      
       if (found) {
-        // Hydrate details like history and sponsored bills if absent
         const hydrated: Member = {
           ...found,
           electedHistory: found.electedHistory || ['제22대 국회의원'],
@@ -398,17 +386,17 @@ export const useMemberActivities = (memberId: string) => {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [quizzes] = useLocalStorageState<BlindQuiz[]>('political_os_quizzes', MOCK_QUIZZES);
-  const [factchecks] = useLocalStorageState<FactCheck[]>('political_os_factchecks', MOCK_FACTCHECKS);
-  const [bills] = useLocalStorageState<BillThread[]>('political_os_bills', MOCK_BILL_THREADS);
-  const [questions] = useLocalStorageState<PublicQuestion[]>('political_os_questions', MOCK_QUESTIONS);
+  const [quizzes] = useSupabaseCollection<BlindQuiz>('quizzes');
+  const [factchecks] = useSupabaseCollection<FactCheck>('fact_checks');
+  const [bills] = useSupabaseCollection<BillThread>('bill_threads');
+  const [questions] = useSupabaseCollection<PublicQuestion>('questions');
 
   useEffect(() => {
     const loadActivities = async () => {
       setLoading(true);
-      await delay(500);
-
-      const foundMember = MOCK_MEMBERS.find((m) => m.id === memberId);
+      const supabase = createClient();
+      const { data: foundMember } = await supabase.from('members').select('*').eq('id', memberId).single();
+      
       if (!foundMember) {
         setActivities([]);
         setLoading(false);
@@ -418,7 +406,6 @@ export const useMemberActivities = (memberId: string) => {
       const memberName = foundMember.name;
       const combined: any[] = [];
 
-      // 1. Quizzes regarding this member
       quizzes.forEach(q => {
         if (q.memberName === memberName) {
           combined.push({
@@ -433,8 +420,6 @@ export const useMemberActivities = (memberId: string) => {
         }
       });
 
-      // 2. Factchecks regarding this member (we map claims that contain memberName or look up claims)
-      // Since it's mock, we map: FC001 -> 김철수 (M01), FC002 -> 이영희 (M02), FC003 -> 박준영 (M03)
       factchecks.forEach(fc => {
         let isRelated = false;
         if (memberId === 'M01' && fc.id === 'FC001') isRelated = true;
@@ -454,8 +439,6 @@ export const useMemberActivities = (memberId: string) => {
         }
       });
 
-      // 3. Bills proposed by this member
-      // For mock, BT001 is proposed by 김철수 (M01), BT002 is proposed by 이영희 (M02)
       bills.forEach(b => {
         let isRelated = false;
         if (memberId === 'M01' && b.id === 'BT001') isRelated = true;
@@ -474,7 +457,6 @@ export const useMemberActivities = (memberId: string) => {
         }
       });
 
-      // 4. Questions targeted to this member
       questions.forEach(q => {
         if (q.targetMemberId === memberId) {
           combined.push({
@@ -489,7 +471,6 @@ export const useMemberActivities = (memberId: string) => {
         }
       });
 
-      // Sort by Date descending
       combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setActivities(combined);
       setLoading(false);
@@ -504,7 +485,7 @@ export const useMemberActivities = (memberId: string) => {
 export const useMemberEvaluations = (memberId: string) => {
   const [evaluations, setEvaluations, evalLoading] = useLocalStorageState<MemberEvaluation[]>(
     'political_os_evaluations',
-    MOCK_INITIAL_EVALUATIONS
+    []
   );
   const [filteredEvaluations, setFilteredEvaluations] = useState<MemberEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -514,7 +495,6 @@ export const useMemberEvaluations = (memberId: string) => {
   useEffect(() => {
     if (!evalLoading) {
       const filtered = evaluations.filter((e) => e.memberId === memberId);
-      // Sort newest first
       filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setFilteredEvaluations(filtered);
       setLoading(false);
@@ -526,16 +506,12 @@ export const useMemberEvaluations = (memberId: string) => {
       showToast('로그인이 필요한 기능입니다.', 'error');
       return false;
     }
-
     await delay(500);
-
     const existingIndex = evaluations.findIndex(
       (e) => e.memberId === memberId && e.userId === session.id
     );
-
     let updated: MemberEvaluation[];
     if (existingIndex > -1) {
-      // Upsert: Overwrite with latest evaluation
       const updatedList = [...evaluations];
       updatedList[existingIndex] = {
         ...updatedList[existingIndex],
@@ -546,7 +522,6 @@ export const useMemberEvaluations = (memberId: string) => {
       updated = updatedList;
       showToast('이전 평가를 업데이트하였습니다.', 'success');
     } else {
-      // New evaluation
       const newEval: MemberEvaluation = {
         id: `E_${Date.now()}`,
         memberId,
@@ -559,7 +534,6 @@ export const useMemberEvaluations = (memberId: string) => {
       updated = [newEval, ...evaluations];
       showToast('평가가 성공적으로 제출되었습니다.', 'success');
     }
-
     setEvaluations(updated);
     return true;
   };
@@ -586,8 +560,8 @@ export const useMemberEvaluations = (memberId: string) => {
 
 // ─── 5. BILL DISCUSSION & PROPOSAL HOOKS ──────────────
 export const useBills = () => {
-  const [bills, setBills, billLoading] = useLocalStorageState<BillThread[]>('political_os_bills', MOCK_BILL_THREADS);
-  const [proposals, setProposals, propLoading] = useLocalStorageState<BillProposal[]>('political_os_proposals', MOCK_PROPOSALS);
+  const [bills, setBills, billLoading] = useSupabaseCollection<BillThread>('bill_threads');
+  const [proposals, setProposals, propLoading] = useSupabaseCollection<BillProposal>('proposals');
   const [loading, setLoading] = useState(true);
   const { session } = useSession();
   const { showToast } = useToast();
@@ -603,8 +577,6 @@ export const useBills = () => {
       showToast('로그인이 필요한 기능입니다.', 'error');
       return false;
     }
-
-    await delay(800);
 
     const diffLines = clauses.map(c => ({ type: 'added' as const, text: c }));
     const newProposal: BillProposal = {
@@ -627,8 +599,15 @@ export const useBills = () => {
         }
       ],
       legalOpinions: [],
-      aiToxicityScore: Math.floor(Math.random() * 10), // Low toxicity simulated
+      aiToxicityScore: Math.floor(Math.random() * 10),
     };
+
+    const supabase = createClient();
+    const { error } = await supabase.from('proposals').insert([newProposal]);
+    if (error) {
+      showToast('제안 등록 중 에러가 발생했습니다.', 'error');
+      return false;
+    }
 
     setProposals([newProposal, ...proposals]);
     showToast('시민 입법안이 상정되었습니다. 동의 투표 진행 가능.', 'success');
@@ -649,14 +628,9 @@ export const useBillDetail = (billId: string) => {
   useEffect(() => {
     const loadBill = async () => {
       setLoading(true);
-      await delay(300);
-
-      const found = MOCK_BILL_THREADS.find((b) => b.id === billId);
-      if (found) {
-        setBill(found);
-      } else {
-        setBill(null);
-      }
+      const supabase = createClient();
+      const { data } = await supabase.from('bill_threads').select('*').eq('id', billId).single();
+      setBill(data || null);
       setLoading(false);
     };
 
@@ -674,9 +648,7 @@ export const useBillDetail = (billId: string) => {
       showToast('로그인이 필요한 기능입니다.', 'error');
       return false;
     }
-
     await delay(400);
-
     const newReply: BillReply = {
       id: `BR_${Date.now()}`,
       threadId: billId,
@@ -688,7 +660,6 @@ export const useBillDetail = (billId: string) => {
       needsReviewCount: 0,
       createdAt: new Date().toISOString()
     };
-
     setReplies([newReply, ...replies]);
     showToast('토론 댓글이 작성되었습니다.', 'success');
     return true;
@@ -699,7 +670,6 @@ export const useBillDetail = (billId: string) => {
       showToast('로그인이 필요한 기능입니다.', 'error');
       return false;
     }
-
     const updated = replies.map((r) => {
       if (r.id === replyId) {
         return {
@@ -710,7 +680,6 @@ export const useBillDetail = (billId: string) => {
       }
       return r;
     });
-
     setReplies(updated);
     showToast('검토 투표가 반영되었습니다.', 'success');
     return true;
@@ -721,7 +690,7 @@ export const useBillDetail = (billId: string) => {
 
 // ─── 6. FACTCHECK HOOKS ──────────────────────────────
 export const useFactChecks = () => {
-  const [factchecks, setFactchecks, fcLoading] = useLocalStorageState<FactCheck[]>('political_os_factchecks', MOCK_FACTCHECKS);
+  const [factchecks, setFactchecks, fcLoading] = useSupabaseCollection<FactCheck>('fact_checks');
   const [loading, setLoading] = useState(true);
   const { session } = useSession();
   const { showToast } = useToast();
@@ -738,7 +707,8 @@ export const useFactChecks = () => {
       return false;
     }
 
-    await delay(300);
+    const target = factchecks.find(fc => fc.id === factId);
+    if (!target) return false;
 
     const updated = factchecks.map((fc) => {
       if (fc.id === factId) {
@@ -750,8 +720,14 @@ export const useFactChecks = () => {
       }
       return fc;
     });
-
     setFactchecks(updated);
+
+    const supabase = createClient();
+    await supabase.from('fact_checks').update({
+      verifiedCount: reaction === 'verified' ? target.verifiedCount + 1 : target.verifiedCount,
+      needsReviewCount: reaction === 'needs_review' ? target.needsReviewCount + 1 : target.needsReviewCount
+    }).eq('id', factId);
+
     showToast('주장에 대한 팩트 검토 결과가 반영되었습니다.', 'success');
     return true;
   };
@@ -761,8 +737,6 @@ export const useFactChecks = () => {
       showToast('로그인이 필요한 기능입니다.', 'error');
       return false;
     }
-
-    await delay(600);
 
     const newFc: FactCheck = {
       id: `FC_${Date.now()}`,
@@ -776,6 +750,13 @@ export const useFactChecks = () => {
       createdAt: new Date().toISOString()
     };
 
+    const supabase = createClient();
+    const { error } = await supabase.from('fact_checks').insert([newFc]);
+    if (error) {
+      showToast('팩트체크 등록 중 에러가 발생했습니다.', 'error');
+      return false;
+    }
+
     setFactchecks([newFc, ...factchecks]);
     showToast('새로운 팩트체크 리포트가 성공적으로 상정되었습니다.', 'success');
     return true;
@@ -786,7 +767,7 @@ export const useFactChecks = () => {
 
 // ─── 7. PUBLIC QUESTIONS HOOKS ────────────────────────
 export const useQuestions = () => {
-  const [questions, setQuestions, qLoading] = useLocalStorageState<PublicQuestion[]>('political_os_questions', MOCK_QUESTIONS);
+  const [questions, setQuestions, qLoading] = useSupabaseCollection<PublicQuestion>('questions');
   const [loading, setLoading] = useState(true);
   const { session } = useSession();
   const { showToast } = useToast();
@@ -803,19 +784,15 @@ export const useQuestions = () => {
       return false;
     }
 
-    const foundMember = MOCK_MEMBERS.find(m => m.id === targetMemberId);
-    if (!foundMember) {
-      showToast('해당하는 의원을 찾을 수 없습니다.', 'error');
-      return false;
-    }
+    const supabase = createClient();
+    const { data: member } = await supabase.from('members').select('name').eq('id', targetMemberId).single();
+    const targetMemberName = member ? member.name : '알 수 없음';
 
-    await delay(500);
-
-    const newQ: PublicQuestion = {
-      id: `QU_${Date.now()}`,
-      questionCode: `QU-2026-${String(Math.floor(Math.random() * 900) + 100)}`,
-      targetMember: `${foundMember.name} 의원`,
-      targetMemberId: foundMember.id,
+    const newQuestion: PublicQuestion = {
+      id: `Q_${Date.now()}`,
+      questionCode: `Q2026-${Math.floor(Math.random() * 10000)}`,
+      targetMember: targetMemberName,
+      targetMemberId,
       title,
       content,
       sourceUrl: sourceUrl || undefined,
@@ -823,11 +800,20 @@ export const useQuestions = () => {
       voteCount: 1,
       authorName: session.displayName,
       createdAt: new Date().toISOString(),
-      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days later
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      disputeRequested: false,
+      disputeResolved: false,
+      aiToxicityScore: 1
     };
 
-    setQuestions([newQ, ...questions]);
-    showToast('공개 질의가 등록되었습니다. 시민 지지 서명이 진행됩니다.', 'success');
+    const { error } = await supabase.from('questions').insert([newQuestion]);
+    if (error) {
+      showToast('질의 등록 중 오류가 발생했습니다.', 'error');
+      return false;
+    }
+
+    setQuestions([newQuestion, ...questions]);
+    showToast('소명 질의서가 성공적으로 발송되었습니다.', 'success');
     return true;
   };
 
@@ -837,33 +823,31 @@ export const useQuestions = () => {
       return false;
     }
 
-    const upvotedQuestions = getLocalStorageItem<string[]>('user_question_upvotes', []);
-    if (upvotedQuestions.includes(questionId)) {
-      showToast('이미 공감 서명을 완료한 질의입니다.', 'warning');
-      return false;
-    }
-
-    await delay(300);
+    const target = questions.find(q => q.id === questionId);
+    if (!target) return false;
 
     const updated = questions.map((q) => {
       if (q.id === questionId) {
-        return {
-          ...q,
-          voteCount: q.voteCount + 1
-        };
+        return { ...q, voteCount: q.voteCount + 1 };
       }
       return q;
     });
-
     setQuestions(updated);
-    setLocalStorageItem('user_question_upvotes', [...upvotedQuestions, questionId]);
-    showToast('질의 서명에 공감 투표가 성공적으로 가산되었습니다.', 'success');
+
+    const supabase = createClient();
+    await supabase.from('questions').update({ voteCount: target.voteCount + 1 }).eq('id', questionId);
+
+    const userVotes = getLocalStorageItem<Record<string, boolean>>('user_question_votes', {});
+    userVotes[questionId] = true;
+    setLocalStorageItem('user_question_votes', userVotes);
+
+    showToast('질의에 공감하였습니다.', 'success');
     return true;
   };
 
   const hasUpvoted = (questionId: string) => {
-    const upvotedQuestions = getLocalStorageItem<string[]>('user_question_upvotes', []);
-    return upvotedQuestions.includes(questionId);
+    const userVotes = getLocalStorageItem<Record<string, boolean>>('user_question_votes', {});
+    return !!userVotes[questionId];
   };
 
   return { questions, loading, submitQuestion, upvoteQuestion, hasUpvoted };

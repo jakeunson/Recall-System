@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/lib/types';
+import Link from 'next/link';
 
 const PRESET_USERS: (UserProfile & { description: string })[] = [
   {
@@ -86,95 +87,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: 'calc(100vh - var(--topbar-h))',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '40px 20px',
-      backgroundColor: 'var(--bg)',
-    }}>
-      <div style={{
-        maxWidth: '520px',
-        width: '100%',
-        background: 'var(--bg-2)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-lg)',
-        padding: '36px',
-        boxShadow: 'var(--shadow-lg)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '28px'
-      }}>
+    <div className="min-h-[calc(100vh-var(--topbar-h))] flex items-center justify-center p-10 bg-background">
+      <div className="max-w-[520px] w-full bg-secondary border border-border rounded-lg p-9 shadow-lg flex flex-col gap-8">
         {/* Header */}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '40px',
-            height: '40px',
-            backgroundColor: 'var(--accent-bg)',
-            border: '1px solid var(--accent-border)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--accent)',
-            marginBottom: '16px'
-          }}>
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-accent/10 border border-accent/20 rounded-md text-accent mb-4">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-1)', letterSpacing: '-0.03em', marginBottom: '8px' }}>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight mb-2">
             체험 로그인 및 역할 선택
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6 }}>
+          <p className="text-base text-muted-foreground leading-relaxed">
             국민소환제 플랫폼에서 등급별(시민, 검증단, 의원 대표) 권한과 참여 활동을 테스트하기 위해 체험할 역할을 선택해 주세요.
           </p>
         </div>
 
         {/* Current Status Box if Logged In */}
         {currentSession && (
-          <div style={{
-            backgroundColor: 'var(--accent-bg)',
-            border: '1px solid var(--accent-border)',
-            borderRadius: 'var(--radius-md)',
-            padding: '16px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}>현재 체험 로그인 상태</span>
-              <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>
+          <div className="bg-accent/10 border border-accent/20 rounded-md px-5 py-4 flex justify-between items-center">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm text-accent font-semibold">현재 체험 로그인 상태</span>
+              <span className="text-sm font-bold text-foreground flex items-center gap-2">
                 {currentSession.displayName}
-                <span style={{ 
-                  marginLeft: '8px', 
-                  fontSize: '11px', 
-                  fontWeight: 500, 
-                  color: 'var(--text-2)',
-                  backgroundColor: 'var(--border)',
-                  padding: '2px 6px',
-                  borderRadius: 'var(--radius-sm)'
-                }}>
+                <span className="text-sm font-medium text-muted-foreground bg-border px-1.5 py-0.5 rounded-sm">
                   신뢰 등급 {currentSession.trustLevel}
                 </span>
               </span>
             </div>
             <button 
               onClick={handleLogout}
-              style={{
-                fontSize: '12px',
-                fontWeight: 600,
-                color: 'var(--danger)',
-                border: '1px solid rgba(248, 113, 113, 0.2)',
-                backgroundColor: 'rgba(248, 113, 113, 0.05)',
-                padding: '6px 12px',
-                borderRadius: 'var(--radius-sm)',
-                transition: 'background 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.05)'}
+              className="text-xs font-semibold text-danger border border-danger/20 bg-danger/5 px-3 py-3 rounded-sm transition-colors hover:bg-danger/10"
             >
               로그아웃
             </button>
@@ -182,51 +127,34 @@ export default function LoginPage() {
         )}
 
         {/* Preset Selector */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-2)' }}>역할 프리셋 선택</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-bold text-muted-foreground">역할 프리셋 선택</h2>
+          <div className="flex flex-col gap-2.5">
             {PRESET_USERS.map((user) => {
               const isSelected = currentSession?.id === user.id;
               return (
                 <button
                   key={user.id}
                   onClick={() => handleLogin({ id: user.id, displayName: user.displayName, trustLevel: user.trustLevel })}
-                  style={{
-                    textAlign: 'left',
-                    background: isSelected ? 'var(--accent-bg)' : 'var(--bg-3)',
-                    border: isSelected ? '1px solid var(--accent)' : '1px solid var(--border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '16px 20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '6px',
-                    transition: 'border-color 0.2s, background-color 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) e.currentTarget.style.borderColor = 'var(--border-2)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) e.currentTarget.style.borderColor = 'var(--border)';
-                  }}
+                  className={`text-left rounded-md px-5 py-4 flex flex-col gap-2 transition-colors duration-200 border ${
+                    isSelected 
+                      ? 'bg-accent/10 border-accent' 
+                      : 'bg-card border-border hover:border-border-2'
+                  }`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-1)' }}>
+                  <div className="flex justify-between items-center w-full">
+                    <span className="text-sm font-bold text-foreground">
                       {user.displayName}
                     </span>
-                    <span style={{ 
-                      fontSize: '11px', 
-                      fontFamily: 'var(--font-mono)', 
-                      fontWeight: 600,
-                      color: isSelected ? 'var(--accent)' : 'var(--text-2)',
-                      backgroundColor: isSelected ? 'var(--accent-bg)' : 'var(--bg-2)',
-                      padding: '2px 8px',
-                      borderRadius: 'var(--radius-lg)',
-                      border: isSelected ? '1px solid var(--accent-border)' : '1px solid var(--border)'
-                    }}>
+                    <span className={`text-sm font-mono font-semibold px-2 py-0.5 rounded-full border ${
+                      isSelected
+                        ? 'text-accent bg-accent/10 border-accent/20'
+                        : 'text-muted-foreground bg-secondary border-border'
+                    }`}>
                       LEVEL {user.trustLevel}
                     </span>
                   </div>
-                  <span style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.5 }}>
+                  <span className="text-xs text-muted-foreground leading-relaxed">
                     {user.description}
                   </span>
                 </button>
@@ -236,48 +164,30 @@ export default function LoginPage() {
         </div>
 
         {/* Divider */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '11px', color: 'var(--text-3)' }}>
-          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <hr className="flex-1 border-t border-border" />
           <span>또는 이름 직접 입력</span>
-          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+          <hr className="flex-1 border-t border-border" />
         </div>
 
         {/* Custom Nickname Input Form */}
-        <form onSubmit={handleCustomLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        <form onSubmit={handleCustomLogin} className="flex flex-col gap-3">
+          <div className="flex gap-2">
             <input
               type="text"
               placeholder="시민 이름 입력 (예: 유권자_정의롭)"
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
-              style={{
-                flex: 1,
-                backgroundColor: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '12px 16px',
-                fontSize: '13px',
-                color: 'var(--text-1)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--accent)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+              className="flex-1 bg-background border border-border rounded-sm px-4 py-3 text-base text-foreground outline-none transition-colors focus:border-accent"
             />
             <button
               type="submit"
               disabled={!customName.trim()}
-              className="btn-primary"
-              style={{
-                padding: '0 24px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: customName.trim() ? 'pointer' : 'not-allowed',
-                backgroundColor: customName.trim() ? 'var(--text-1)' : 'var(--border)',
-                color: customName.trim() ? 'var(--bg-2)' : 'var(--text-3)',
-                boxShadow: 'none'
-              }}
+              className={`px-6 rounded-sm text-base font-bold transition-colors ${
+                customName.trim()
+                  ? 'bg-foreground text-secondary cursor-pointer'
+                  : 'bg-border text-muted-foreground cursor-not-allowed'
+              }`}
             >
               진입
             </button>

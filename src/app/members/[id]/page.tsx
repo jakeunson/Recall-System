@@ -10,8 +10,8 @@ import {
 } from '@/lib/hooks';
 import RadarChart from '@/components/RadarChart';
 import GaugeRing from '@/components/GaugeRing';
-import { SkeletonCard, SkeletonText } from '@/components/ui/SkeletonUI';
-import AuditLogPanel from '@/components/ui/AuditLogPanel';
+import { SkeletonCard, SkeletonText } from '@/components/custom/SkeletonUI';
+import AuditLogPanel from '@/components/custom/AuditLogPanel';
 
 export default function MemberDetailPage() {
   const params = useParams();

@@ -12,20 +12,19 @@ interface StatCardProps {
 
 export default function StatCard({ label, value, unit, sub, accent }: StatCardProps) {
   return (
-    <div className="card-base" style={{
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-      padding: '20px',
-      backgroundColor: accent ? 'var(--accent)' : 'var(--bg-2)',
+    <div className="card-base flex flex-col justify-between" style={{
+      padding: '24px',
+      backgroundColor: accent ? 'var(--accent)' : 'var(--bg)',
       color: accent ? '#ffffff' : 'var(--text-1)',
-      border: accent ? 'none' : '1px solid var(--border)',
+      border: accent ? '1px solid var(--accent)' : '1px solid var(--border)',
+      borderRadius: '12px',
+      boxShadow: accent ? '0 4px 14px rgba(0,0,0,0.1)' : '0 1px 2px rgba(0,0,0,0.02)',
     }}>
       <div style={{
         fontSize: 'var(--font-sm)',
         color: accent ? 'rgba(255,255,255,0.7)' : 'var(--text-2)',
         fontWeight: 600,
-        marginBottom: '12px',
+        marginBottom: '16px',
       }}>
         {label}
       </div>
