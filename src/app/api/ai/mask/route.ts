@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
+import { callGroq } from "@/lib/groq";
 import { applyMasking } from "@/lib/masking";
 
 export async function POST(request: Request) {
@@ -21,17 +22,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "텍스트가 최대 허용 길이(5,000자)를 초과했습니다." }, { status: 400 });
     }
 
-    // 2. API Key 미설정 시 Graceful Fallback (기존 로컬 정밀식 검사로 전환)
-    if (!process.env.GEMINI_API_KEY) {
+    // 2. API Key 미설정 검사 (Groq, Gemini 둘 다 없을 경우 Local 처리)
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       const fallbackText = applyMasking(text);
       return NextResponse.json({
         maskedText: fallbackText,
         maskCount: fallbackText === text ? 0 : 1,
         fallback: true,
+        provider: "local",
       });
     }
 
-    // 3. Gemini 지능형 문맥 마스킹 질의
+    // 3. AI 지능형 문맥 마스킹 질의
     const systemInstruction = `
 You are a highly precise, objective, and neutral content editor for a high-integrity civic-tech platform.
 Your sole task is to mask/anonymize all partisan cues, party names, politicians' names, specific wealthy/low-income neighborhood labels, and politically loaded geographical battlegrounds to prevent user cognitive bias (Cognitive Bias / Blind Evaluation).
@@ -54,7 +56,28 @@ You must return a JSON object with the following exact keys and types:
 
     const prompt = `마스킹할 원본 텍스트:\n"""\n${text}\n"""`;
 
-    const aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+    let aiResponse = "";
+    let provider = "";
+
+    try {
+      // Tier 1: Groq 시도
+      if (process.env.GROQ_API_KEY) {
+        aiResponse = await callGroq(prompt, systemInstruction, "json_object");
+        provider = "groq";
+      } else {
+        throw new Error("GROQ_API_KEY 미설정");
+      }
+    } catch (groqError) {
+      console.warn("Groq API 실패, Gemini 우회 시도:", groqError);
+      
+      // Tier 2: Gemini 시도
+      if (process.env.GEMINI_API_KEY) {
+        aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+        provider = "gemini";
+      } else {
+        throw new Error("GEMINI_API_KEY 미설정");
+      }
+    }
 
     let parsedResult;
     try {
@@ -66,17 +89,18 @@ You must return a JSON object with the following exact keys and types:
     return NextResponse.json({
       ...parsedResult,
       fallback: false,
+      provider,
     });
 
   } catch (error: any) {
     console.error("Mask AI API Error:", error);
 
-    // 최종 예외 안전망: 에러 발생 시 기존 1차 Regex 기반 마스킹으로 안전하게 복원
     const fallbackText = applyMasking(text || "");
     return NextResponse.json({
       maskedText: fallbackText,
       maskCount: fallbackText === text ? 0 : 1,
       fallback: true,
+      provider: "local",
     });
   }
 }

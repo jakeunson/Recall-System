@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
+import { callGroq } from "@/lib/groq";
 import { analyzeAnswerQuality } from "@/lib/intelligence";
 
 export async function POST(request: Request) {
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "텍스트가 최대 허용 길이(5,000자)를 초과했습니다." }, { status: 400 });
     }
 
-    // 2. API Key 미설정 시 Graceful Fallback (기존 로컬 시뮬레이션 AQS 결과 반환)
-    if (!process.env.GEMINI_API_KEY) {
+    // 2. API Key 미설정 검사 (Groq, Gemini 둘 다 없을 경우 Local 처리)
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       const localResult = await analyzeAnswerQuality(question, answer);
       return NextResponse.json({
         totalScore: localResult.auto_score,
@@ -26,10 +27,11 @@ export async function POST(request: Request) {
         genericPenalty: localResult.generic_penalty,
         rationale: localResult.rationale + " (로컬 분석 엔진 적용)",
         fallback: true,
+        provider: "local"
       });
     }
 
-    // 3. Gemini AQS 정량적 평가 질의
+    // 3. AI AQS 정량적 평가 질의
     const systemInstruction = `
 You are an extremely objective, strict, and impartial civic data scientist evaluating a public representative's response to an official citizen inquiry.
 Your goal is to score the representative's answer against the citizen's question on four core dimensions.
@@ -65,7 +67,28 @@ ${answer}
 """
 `;
 
-    const aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+    let aiResponse = "";
+    let provider = "";
+
+    try {
+      // Tier 1: Groq 시도
+      if (process.env.GROQ_API_KEY) {
+        aiResponse = await callGroq(prompt, systemInstruction, "json_object");
+        provider = "groq";
+      } else {
+        throw new Error("GROQ_API_KEY 미설정, Gemini로 우회");
+      }
+    } catch (groqError) {
+      console.warn("Groq API 실패, Gemini 우회 시도:", groqError);
+      
+      // Tier 2: Gemini 시도
+      if (process.env.GEMINI_API_KEY) {
+        aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+        provider = "gemini";
+      } else {
+        throw new Error("GEMINI_API_KEY 미설정");
+      }
+    }
 
     let parsedResult;
     try {
@@ -77,6 +100,7 @@ ${answer}
     return NextResponse.json({
       ...parsedResult,
       fallback: false,
+      provider
     });
 
   } catch (error: any) {
@@ -94,6 +118,7 @@ ${answer}
         genericPenalty: localResult.generic_penalty,
         rationale: "답변 품질 평가 처리가 완료되었습니다. (로컬 예비 시스템 전환)",
         fallback: true,
+        provider: "local"
       });
     } catch {
       return NextResponse.json({
@@ -104,6 +129,7 @@ ${answer}
         genericPenalty: 0,
         rationale: "임시 답변 품질 측정이 적용되었습니다.",
         fallback: true,
+        provider: "local"
       });
     }
   }

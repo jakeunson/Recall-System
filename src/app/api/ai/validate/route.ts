@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { callGemini } from "@/lib/gemini";
+import { callGroq } from "@/lib/groq";
 import { detectEmotionWords } from "@/lib/emotion-filter";
 
 export async function POST(request: Request) {
@@ -15,8 +16,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "텍스트가 최대 허용 길이(5,000자)를 초과했습니다." }, { status: 400 });
     }
 
-    // 2. API Key 미설정 시 Graceful Fallback (기존 로컬 정밀식 검사로 전환)
-    if (!process.env.GEMINI_API_KEY) {
+    // 2. API Key 미설정 검사 (Groq, Gemini 둘 다 없을 경우 Local 처리)
+    if (!process.env.GROQ_API_KEY && !process.env.GEMINI_API_KEY) {
       const localResult = detectEmotionWords(text);
       return NextResponse.json({
         emotionScore: localResult.hasEmotionWords ? 70 : 0,
@@ -26,10 +27,11 @@ export async function POST(request: Request) {
         ],
         warningMessage: localResult.warningMessage,
         fallback: true,
+        provider: "local",
       });
     }
 
-    // 3. Gemini 지능형 감정 분석 질의
+    // 3. AI 지능형 감정 분석 질의
     const systemInstruction = `
 You are an advanced, completely neutral, and objective linguistic editor for a high-integrity civic-tech platform.
 Your task is to analyze the input Korean text for political emotional agitation, loaded words, hostile framing, hate speech, inflammatory incitement, or extreme bias.
@@ -45,7 +47,28 @@ You must return a JSON object with the following exact keys and types:
 
     const prompt = `검사할 시민 제출 내용:\n"""\n${text}\n"""`;
 
-    const aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+    let aiResponse = "";
+    let provider = "";
+
+    try {
+      // Tier 1: Groq 시도
+      if (process.env.GROQ_API_KEY) {
+        aiResponse = await callGroq(prompt, systemInstruction, "json_object");
+        provider = "groq";
+      } else {
+        throw new Error("GROQ_API_KEY 미설정");
+      }
+    } catch (groqError) {
+      console.warn("Groq API 실패, Gemini 우회 시도:", groqError);
+      
+      // Tier 2: Gemini 시도
+      if (process.env.GEMINI_API_KEY) {
+        aiResponse = await callGemini(prompt, systemInstruction, "application/json");
+        provider = "gemini";
+      } else {
+        throw new Error("GEMINI_API_KEY 미설정");
+      }
+    }
     
     let parsedResult;
     try {
@@ -58,6 +81,7 @@ You must return a JSON object with the following exact keys and types:
     return NextResponse.json({
       ...parsedResult,
       fallback: false,
+      provider,
     });
 
   } catch (error: any) {
@@ -73,6 +97,7 @@ You must return a JSON object with the following exact keys and types:
         suggestions: ["데이터와 사실 근거 위주로 수정해 주세요."],
         warningMessage: localResult.warningMessage,
         fallback: true,
+        provider: "local",
       });
     } catch {
       return NextResponse.json({
@@ -81,6 +106,7 @@ You must return a JSON object with the following exact keys and types:
         suggestions: [],
         warningMessage: "",
         fallback: true,
+        provider: "local",
       });
     }
   }
