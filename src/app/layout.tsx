@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import AppShell from "@/components/AppShell";
+
 import { ToastProvider } from "@/components/custom/ToastNotification";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,7 @@ export default function RootLayout({
       <body className="antialiased">
         <ToastProvider>
           <TooltipProvider>
-            <AppShell>
-              {children}
-            </AppShell>
+            {children}
           </TooltipProvider>
         </ToastProvider>
       </body>

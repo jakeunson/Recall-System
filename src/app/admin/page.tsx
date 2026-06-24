@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { PublicQuestion, BillProposal, FactCheck, Member } from '@/lib/types';
+import { PublicQuestion, BillProposal, Member } from '@/lib/types';
 
 export default function AdminDeskPage() {
   const [userSession, setUserSession] = useState<{ id: string; displayName: string; trustLevel: number } | null>(null);
@@ -12,8 +12,7 @@ export default function AdminDeskPage() {
   // 데이터 상태
   const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [proposals, setProposals] = useState<BillProposal[]>([]);
-  const [factchecks, setFactchecks] = useState<FactCheck[]>([]);
-  
+
   // 감정 필터링 관련 상태
   const [badWords, setBadWords] = useState<string[]>(['바보', '쓰레기', '매국노', '적폐', '독재자']);
   const [newWord, setNewWord] = useState('');
@@ -43,17 +42,14 @@ export default function AdminDeskPage() {
         
         const [
           { data: qList },
-          { data: pList },
-          { data: fList }
+          { data: pList }
         ] = await Promise.all([
           supabase.from('questions').select('*').order('createdAt', { ascending: false }),
-          supabase.from('proposals').select('*').order('createdAt', { ascending: false }),
-          supabase.from('fact_checks').select('*').order('createdAt', { ascending: false })
+          supabase.from('proposals').select('*').order('createdAt', { ascending: false })
         ]);
 
         if (qList) setQuestions(qList as PublicQuestion[]);
         if (pList) setProposals(pList as BillProposal[]);
-        if (fList) setFactchecks(fList as FactCheck[]);
 
         setLoading(false);
       };
@@ -118,18 +114,7 @@ export default function AdminDeskPage() {
     alert(`[행정 수정 권고] 제안자 측에 전문가 권고 피드백을 전달하여 "수정보완 필요" 상태로 이관했습니다.`);
   };
 
-  // 팩트체크 판정 직권 조정
-  const handleUpdateVerdict = (factcheckId: string, verdict: FactCheck['verdict']) => {
-    const updated = factchecks.map((fc) => {
-      if (fc.id === factcheckId) {
-        return { ...fc, verdict: verdict };
-      }
-      return fc;
-    });
-    setFactchecks(updated);
-    localStorage.setItem('user_factchecks', JSON.stringify(updated));
-    alert(`[결론 조정 완료] 해당 팩트체크의 직권 판정 결론이 "${verdict}" 상태로 조정되었습니다.`);
-  };
+
 
   // 키워드 필터링 사전 조작
   const handleAddBadWord = (e: React.FormEvent) => {
@@ -207,7 +192,6 @@ export default function AdminDeskPage() {
           { id: 'dashboard', label: '📊 종합 SLA 통제' },
           { id: 'questions', label: '🚨 소명 요구 강제조율' },
           { id: 'proposals', label: '🏛️ 입법안 진급통제' },
-          { id: 'factchecks', label: '⚖️ 팩트체크 오인조정' },
           { id: 'sentiment', label: '🚫 감정/유해어 사전' }
         ].map((tab) => {
           const isActive = activeTab === tab.id;
@@ -238,7 +222,6 @@ export default function AdminDeskPage() {
             {[
               { title: '총 공개 질의', value: `${questions.length}건`, sub: '소명 완료율 64%' },
               { title: '시민 입법안', value: `${proposals.length}건`, sub: '헌법 검토 2건 완료' },
-              { title: '팩트체크 건수', value: `${factchecks.length}건`, sub: '직권 조정률 12%' },
               { title: '필터 키워드 사전', value: `${badWords.length}개`, sub: '자동 필터링 상시 가동' }
             ].map((stat, idx) => (
               <div key={idx} className="card-base p-5 bg-card">
@@ -467,83 +450,7 @@ export default function AdminDeskPage() {
         </div>
       )}
 
-      {/* ─────────────────────────────────────────────────────────── */}
-      {/* Tab D. 팩트체크 조정 */}
-      {/* ─────────────────────────────────────────────────────────── */}
-      {activeTab === 'factchecks' && (
-        <div className="flex flex-col gap-5 fade-in">
-          <div className="card-base p-5">
-            <h3 className="text-sm font-extrabold text-foreground mb-2 m-0">
-              ⚖️ 시민 교차 팩트체크 오인 판정 결론 조정
-            </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed m-0">
-              집단지성에 의해 왜곡된 다수결 판정을 검증된 팩트기록과 연계하여, 관리자 직권으로 팩트체크 공식 판결 결론을 변경하고 공시하는 조치 창구입니다.
-            </p>
-          </div>
 
-          <div className="flex flex-col gap-3">
-            {factchecks.map((fc) => {
-              const verdictMap: Record<string, { label: string; color: string }> = {
-                true: { label: '진실', color: 'text-success' },
-                mostly_true: { label: '대체로 진실', color: 'text-success' },
-                half_true: { label: '절반의 진실', color: 'text-warning' },
-                mostly_false: { label: '대체로 거짓', color: 'text-danger' },
-                false: { label: '거짓', color: 'text-danger' }
-              };
-              const currentInfo = verdictMap[fc.verdict] || { label: fc.verdict, color: 'text-muted-foreground' };
-              return (
-                <div
-                  key={fc.id}
-                  className="bg-card border border-border-2 rounded-sm p-5 flex flex-col gap-3"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground font-bold">작성자: {fc.authorName}</span>
-                    <div className="flex gap-2 items-center">
-                      <span className="text-xs text-muted-foreground">판정 결론:</span>
-                      <strong className={`text-sm ${currentInfo.color}`}>
-                        {currentInfo.label}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <h4 className="text-[12.5px] font-extrabold text-foreground m-0">
-                      🔍 대상 주장: &quot;{fc.claim}&quot;
-                    </h4>
-                    <p className="text-sm text-muted-foreground m-0 leading-relaxed">
-                      <strong className="text-foreground">교차 근거:</strong> {fc.evidence}
-                    </p>
-                  </div>
-
-                  <hr className="border-none border-t border-border my-1" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">평가단 신뢰 추천: {fc.verifiedCount}건 | 이의제기: {fc.needsReviewCount}건</span>
-                    
-                    <div className="flex gap-1 items-center">
-                      <span className="text-[9.5px] text-muted-foreground mr-1">결론 조정:</span>
-                      {(['true', 'mostly_true', 'half_true', 'mostly_false', 'false'] as const).map((v) => (
-                        <button
-                          key={v}
-                          onClick={() => handleUpdateVerdict(fc.id, v)}
-                          className={`px-2 py-1 text-xs rounded-sm cursor-pointer border transition-colors ${
-                            fc.verdict === v 
-                              ? 'font-extrabold bg-accent/10 text-accent border-accent/20' 
-                              : 'font-medium bg-secondary text-muted-foreground border-border hover:bg-card'
-                          }`}
-                        >
-                          {verdictMap[v].label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* ─────────────────────────────────────────────────────────── */}
       {/* Tab E. 감정 필터링 & 유해어 사전 */}

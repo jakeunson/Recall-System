@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { MOCK_QUESTIONS } from '../src/lib/mock-data';
+import { MOCK_QUESTIONS } from '../src/lib/data';
 
 function generateSLAFeed() {
   const now = new Date();

@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { MOCK_QUESTIONS } from '@/lib/mock-data';
+import { MOCK_QUESTIONS } from '@/lib/data';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://political-os.org';

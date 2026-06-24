@@ -7,10 +7,9 @@ import {
   MOCK_MEMBERS, 
   MOCK_QUIZZES, 
   MOCK_QUESTIONS, 
-  MOCK_FACTCHECKS, 
   MOCK_BILL_THREADS, 
   MOCK_PROPOSALS 
-} from '../src/lib/mock-data';
+} from '../src/lib/data';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // 데이터 강제 삽입(RLS 무시)을 위해 service_role 키를 사용해야 합니다.
@@ -37,11 +36,6 @@ async function seedData() {
     console.log(`- quizzes 테이블 데이터 삽입 중 (${MOCK_QUIZZES.length}건)...`);
     const { error: quizErr } = await supabase.from('quizzes').upsert(MOCK_QUIZZES);
     if (quizErr) throw quizErr;
-
-    // 3. FactChecks
-    console.log(`- fact_checks 테이블 데이터 삽입 중 (${MOCK_FACTCHECKS.length}건)...`);
-    const { error: factErr } = await supabase.from('fact_checks').upsert(MOCK_FACTCHECKS);
-    if (factErr) throw factErr;
 
     // 4. BillThreads
     console.log(`- bill_threads 테이블 데이터 삽입 중 (${MOCK_BILL_THREADS.length}건)...`);
