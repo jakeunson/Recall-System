@@ -10,7 +10,7 @@
     },
     "url": "https://political-os.org/questions/QU002",
     "additionalType": "OverdueSLA",
-    "overdueDays": 38
+    "overdueDays": 39
   },
   {
     "@context": "https://schema.org",
@@ -23,6 +23,6 @@
     },
     "url": "https://political-os.org/questions/QU003",
     "additionalType": "OverdueSLA",
-    "overdueDays": 29
+    "overdueDays": 30
   }
 ]
